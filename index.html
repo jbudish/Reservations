@@ -909,6 +909,7 @@ function renderWeek(){
   var lbl=mo[first.getMonth()];if(first.getMonth()!==last.getMonth())lbl+='-'+mo[last.getMonth()];
   label.textContent=lbl+' '+last.getFullYear();
 }
+function firstName(name){ return (name||'').split(' ')[0]; }
 function renderGrid(){
   var room=ROOMS[S.room];
   document.getElementById('gridLabel').textContent=room.name+' — '+fmtDateLabel(S.selectedDate);
@@ -926,13 +927,13 @@ function renderGrid(){
       var isMine=owner&&owner===S.currentUser;
       var isOther=owner&&!isMine;
       var isSelected=S.selectedSlots.indexOf(totalMin)>=0;
-      var cls,onclick='';
-      if(isPending){cls='slot pending';}
-      else if(isOther){cls='slot booked';}
-      else if(isMine){cls='slot mine';onclick=' onclick="unbookSlot('+totalMin+')"';}
-      else if(isSelected){cls='slot selected';onclick=' onclick="toggleSlot('+totalMin+')"';}
-      else{cls='slot';onclick=' onclick="toggleSlot('+totalMin+')"';}
-      slotHtml+='<div class="'+cls+'"'+onclick+'>'+fmtMin(totalMin)+'</div>';
+      var cls,onclick='',label;
+      if(isPending){cls='slot pending';label='...';}
+      else if(isOther){cls='slot booked';label=firstName(owner);}
+      else if(isMine){cls='slot mine';onclick=' onclick="unbookSlot('+totalMin+')"';label=firstName(owner);}
+      else if(isSelected){cls='slot selected';onclick=' onclick="toggleSlot('+totalMin+')"';label=fmtMin(totalMin);}
+      else{cls='slot';onclick=' onclick="toggleSlot('+totalMin+')"';label=fmtMin(totalMin);}
+      slotHtml+='<div class="'+cls+'"'+onclick+' style="font-size:'+(owner?'9px':'10px')+'">'+esc(label)+'</div>';
     });
     html+='<div class="hour-block"><div class="hour-label">'+fmtHour(h)+'</div><div class="slots-row">'+slotHtml+'</div></div>';
   });
@@ -956,7 +957,8 @@ function submitBooking(){
   if(!S.selectedSlots.length)return;
 
   // ── BOOKING RESTRICTIONS ────────────────────────────────
-  // Max 4 consecutive 15-min slots (1 hour). Must be consecutive.
+  // 1. Max 4 consecutive 15-min slots (1 hour). Must be consecutive.
+  // 2. One booking per person per room per day.
   var sorted = S.selectedSlots.slice().sort(function(a,b){return a-b;});
   if(sorted.length > 4){
     resShowToast('failed','Max booking is 1 hour (4 slots). Please adjust your selection.');
@@ -967,6 +969,13 @@ function submitBooking(){
       resShowToast('failed','Slots must be consecutive. Please select back-to-back times.');
       return;
     }
+  }
+  var alreadyBooked = S.bookings.some(function(b){
+    return b.room===S.room && b.date===S.selectedDate && b.user===S.currentUser && b.status!=='Cancelled';
+  });
+  if(alreadyBooked){
+    resShowToast('failed','You already have a booking for '+ROOMS[S.room].name+' today.');
+    return;
   }
   // ── END BOOKING RESTRICTIONS ────────────────────────────
 
