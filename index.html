@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Reserve</title>
+<title>WorkOrder</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap');
 :root{
-  --bg:#fff;--surface:#f5f5f5;--border:#e0e0e0;
+  --bg:#fff;--surface:#f5f5f5;--surface2:#eee;--border:#e0e0e0;
   --text:#111;--muted:#888;--radius:12px;
   --blue:#6b7fa3;--blue-bg:rgba(107,127,163,0.08);--blue-border:rgba(107,127,163,0.35);
   --good:#2e7d32;--danger:#c62828;
@@ -16,21 +16,170 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;align-items:center}
 #app{width:100%;max-width:480px;height:100%;display:flex;flex-direction:column}
+
+/* ── HEADER ── */
 .header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;flex-shrink:0;border-bottom:1px solid var(--border)}
-.logo{font-family:'DM Mono',monospace;font-size:12px;color:var(--blue);letter-spacing:.15em;text-transform:uppercase;background:none;border:none;padding:0}
+.app-toggle{display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px;flex-shrink:0}
+.app-toggle-btn{padding:5px 14px;border-radius:16px;border:none;background:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .18s;white-space:nowrap}
+.app-toggle-btn.active{background:var(--blue);color:#fff}
 .icon-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;padding:5px 9px;font-size:14px;transition:all .15s;line-height:1}
 .icon-btn:hover{border-color:#111;color:#111}
+.session-info{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:right;line-height:1.5}
+
+/* ── SHARED ── */
+.app-view{display:none;flex-direction:column;flex:1;overflow:hidden}
+.app-view.active{display:flex}
+.field-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-family:'DM Mono',monospace;margin-bottom:5px;display:block}
+.fi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;outline:none;transition:border-color .15s;appearance:none}
+.fi:focus{border-color:var(--blue)}
+.fi::placeholder{color:#bbb}
+.fi option{background:#fff}
+.sw{position:relative}
+.sw::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:11px}
+.btn{padding:12px 18px;border-radius:var(--radius);border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;width:100%}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#57698a}
+.btn-primary:active{transform:scale(.98)}
+.btn-secondary{background:#fff;color:#111;border:1px solid #d0d0d0}
+.btn-secondary:hover{background:var(--surface)}
+.toast{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:var(--radius);border:1px solid var(--border);font-size:13px;flex-shrink:0}
+.toast.sending{background:#fffde7;border-color:#f9a825;color:#e65100}
+.toast.sent{background:#e8f5e9;border-color:#388e3c;color:var(--good)}
+.toast.failed{background:#ffebee;border-color:#c62828;color:var(--danger)}
+.spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;opacity:.6}
+@keyframes spin{to{transform:rotate(360deg)}}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.list-area{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:9px;padding-bottom:4px;touch-action:pan-y}
+.list-area::-webkit-scrollbar{width:3px}
+.list-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .main{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 20px 32px;display:flex;flex-direction:column;gap:14px}
 .main::-webkit-scrollbar{width:3px}
 .main::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-/* ROOM TABS */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:flex-end;justify-content:center;z-index:350;animation:fadeIn .15s ease}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:22px 20px 34px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:11px;box-shadow:0 -4px 24px rgba(0,0,0,.1);animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:16px;font-weight:700;color:var(--blue)}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;z-index:300}
+.loading-spinner{width:32px;height:32px;border:3px solid #e0e0e0;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+.twin-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0}
+.twin-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:#111;cursor:pointer;text-align:left;transition:all .15s;width:100%;outline:none;appearance:none;font-weight:500}
+.twin-btn:hover,.twin-btn:focus{border-color:var(--blue)}
+.twin-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:#111;width:100%;outline:none;transition:border-color .15s}
+.twin-input:focus{border-color:var(--blue)}
+.twin-input::placeholder{color:#bbb}
+.twin-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);font-family:'DM Mono',monospace;margin-bottom:4px}
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1}
+.step-row{display:flex;gap:10px;align-items:flex-start}
+.step-num{font-family:'DM Mono',monospace;font-size:10px;color:#111;background:#ebebeb;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-text{font-size:12px;color:var(--muted);line-height:1.5}
+.step-text strong{color:var(--text)}
+.code-i{font-family:'DM Mono',monospace;font-size:10px;background:#ebebeb;border:1px solid #ddd;border-radius:4px;padding:1px 4px;color:#111}
+.url-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;width:100%;outline:none;transition:border-color .15s}
+.url-input:focus{border-color:#111}
+.url-input::placeholder{color:#bbb;font-size:12px;font-family:'DM Sans',sans-serif}
+.status-row{display:flex;align-items:center;gap:8px;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;flex-shrink:0}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0}
+.status-dot.connected{background:var(--good);box-shadow:0 0 6px var(--good)}
+.status-dot.error{background:var(--danger)}
+
+/* ── WORKORDER STYLES ── */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;margin-bottom:12px}
+.tab-btn{flex:1;padding:10px 4px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-panels{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tab-panel{display:none;flex-direction:column;flex:1;overflow:hidden}
+.tab-panel.active{display:flex}
+.job-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);flex-shrink:0;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.job-card:hover{border-color:#bbb}
+.jc-top{display:flex;flex-direction:row;align-items:stretch;padding:12px 12px 10px}
+.jc-left{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;padding-right:10px;cursor:pointer}
+.jc-divider{width:1px;background:var(--border);flex-shrink:0;margin:0 8px}
+.jc-right{width:45%;display:flex;flex-direction:column;gap:5px;align-items:stretch}
+.jc-title{font-weight:700;font-size:13px;line-height:1.3;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jc-row{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jc-photo-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px 10px;border-top:1px solid var(--border)}
+.jc-pill{width:100%;border-radius:8px;border:1px solid #e0e0e0;padding:7px 9px;font-family:'DM Sans',sans-serif;font-size:11px;text-align:left;line-height:1.3;box-sizing:border-box;appearance:none;outline:none;cursor:pointer;background:#f5f5f5;color:#555;transition:border-color .12s;display:block}
+.jc-pill:hover,.jc-pill:focus{border-color:#999}
+.jc-photo-pill{width:100%;border-radius:8px;border:1px solid #e0e0e0;padding:7px 9px;font-family:'DM Sans',sans-serif;font-size:11px;text-align:center;line-height:1.3;cursor:pointer;background:#f5f5f5;color:#555;display:block;outline:none}
+.jc-photo-pill.has-photo{color:var(--blue);border-color:var(--blue-border);background:var(--blue-bg)}
+.jc-photo-pill.can-upload{color:var(--blue);border-color:var(--blue-border);background:#fff}
+.jc-photo-pill.vendor-photo{color:var(--good);border-color:rgba(46,125,50,.3);background:rgba(46,125,50,.05)}
+.jc-photo-pill.no-photo,.jc-photo-pill.no-vendor{color:#bbb;border-color:#eee;cursor:default}
+.p-need{background:rgba(160,160,160,.1);border-color:rgba(120,120,120,.3);color:#666}
+.p-low{background:rgba(180,140,0,.08);border-color:rgba(160,120,0,.3);color:#7a5c00}
+.p-medium{background:rgba(255,180,80,.12);border-color:rgba(230,150,50,.35);color:#c47a00}
+.p-high{background:rgba(230,100,30,.1);border-color:rgba(200,80,20,.3);color:#c45000}
+.p-immediate{background:rgba(198,40,40,.08);border-color:rgba(180,30,30,.3);color:#c62828}
+.p-done{background:rgba(46,125,50,.08);border-color:rgba(46,125,50,.3);color:#2e7d32}
+.p-open{background:rgba(160,160,160,.1);border-color:rgba(120,120,120,.3);color:#666}
+.detail-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:250;padding:20px}
+.detail-sheet{background:#fff;border-radius:16px;width:100%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.2);overflow:hidden;animation:fadeIn .18s ease}
+.detail-header{padding:13px 14px 11px;flex-shrink:0;display:flex;flex-direction:row;align-items:stretch}
+.detail-header-left{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;padding-right:10px}
+.detail-title{font-weight:700;font-size:14px;line-height:1.3;color:#111}
+.detail-location{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.detail-row{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-header-divider{width:1px;background:var(--border);flex-shrink:0;margin:0 10px}
+.detail-header-right{display:flex;flex-direction:column;gap:5px;align-items:stretch;width:45%;flex-shrink:0}
+.detail-body{flex:1;overflow-y:auto;border-top:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:12px}
+.detail-body::-webkit-scrollbar{width:3px}
+.detail-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.detail-slabel{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-family:'DM Mono',monospace;margin-bottom:3px}
+.detail-value{font-size:13px;color:#111;line-height:1.4}
+.detail-photos{display:flex;flex-direction:column;gap:10px}
+.detail-photo-block{display:flex;flex-direction:column;gap:4px}
+.detail-plabel{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);font-family:'DM Mono',monospace}
+.detail-pimg{width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer;transition:opacity .15s}
+.detail-pimg:hover{opacity:.88}
+.detail-pnone{width:100%;height:60px;background:var(--surface);border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#bbb}
+.fs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:400;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fs-img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:8px}
+.photo-zone{background:var(--surface);border:2px dashed var(--border);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;position:relative;overflow:hidden;flex-shrink:0;height:120px;transition:border-color .2s}
+.photo-zone:hover{border-color:#999}
+.photo-zone img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photo-zone .overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+.photo-zone p{font-size:13px;color:var(--muted)}
+.cam-icon{width:28px;height:28px;color:var(--muted)}
+.welcome-title{font-size:26px;font-weight:700;color:var(--blue);line-height:1.2;margin-bottom:20px}
+.welcome-btn{width:100%;padding:18px;min-height:68px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);text-align:left;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.welcome-btn:hover{border-color:#999;background:#fafafa}
+.welcome-btn-title{font-size:15px;font-weight:600;color:#111}
+.welcome-btn-sub{font-size:12px;color:var(--muted)}
+.grouped-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 36px 18px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;width:100%;outline:none;transition:border-color .15s;appearance:none;min-height:68px}
+.grouped-select:focus{border-color:var(--blue)}
+.grouped-select optgroup{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#aaa;font-style:normal}
+.grouped-select option{text-transform:none;font-size:14px;color:#111}
+.role-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;display:flex;align-items:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.role-card:hover{border-color:var(--blue)}
+.role-card.selected{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+.role-name{font-weight:600;font-size:15px}
+.role-desc{font-size:12px;color:var(--muted);margin-top:2px}
+.role-card.selected .role-desc{color:var(--blue);opacity:.7}
+.prof-grid{display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1}
+.prof-item{border:1px solid var(--border);border-radius:10px;overflow:hidden;flex-shrink:0}
+.prof-header{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;background:#fff;transition:background .12s}
+.prof-header:hover{background:var(--surface)}
+.prof-header.selected{background:var(--blue-bg)}
+.prof-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.prof-header.selected .prof-check{background:var(--blue);border-color:var(--blue)}
+.prof-name{flex:1;font-size:14px;font-weight:500}
+.prof-primary-btn{font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;font-family:'DM Mono',monospace;color:var(--muted);white-space:nowrap}
+.prof-primary-btn.is-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.prof-detail{display:none;padding:10px 13px;border-top:1px solid var(--border);background:var(--surface);gap:8px;flex-direction:column}
+.prof-detail.open{display:flex}
+.prof-detail-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grade-helper{font-size:10px;color:var(--muted);line-height:1.4;padding:6px 8px;background:#fff;border:1px solid var(--border);border-radius:8px}
+
+/* ── RESERVE STYLES ── */
 .room-tabs{display:flex;gap:7px}
 .room-tab{flex:1;padding:10px 8px;border-radius:var(--radius);border:1px solid var(--border);background:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
 .room-tab:hover{border-color:var(--blue);color:var(--blue)}
 .room-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
 .room-tab .room-icon{display:block;margin-bottom:3px;line-height:0}
 .room-tab .room-icon svg{width:26px;height:26px}
-/* WEEK STRIP */
 .week-nav{display:flex;align-items:center;gap:0}
 .week-arrow{background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:14px;line-height:1;transition:all .15s;flex-shrink:0}
 .week-arrow:hover{border-color:#111;color:#111}
@@ -44,7 +193,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 .day-chip.active .dow,.day-chip.active .dom{color:#fff}
 .day-chip.active.today .dom{color:#fff}
 .week-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;letter-spacing:.04em}
-/* TIME GRID */
 .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-family:'DM Mono',monospace}
 .time-grid{display:flex;flex-direction:column;gap:2px}
 .hour-block{display:flex;gap:6px;align-items:flex-start}
@@ -56,8 +204,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 .slot.mine{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
 .slot.selected{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:600}
 .slot.pending{background:#fffde7;border-color:#f9a825;color:#e65100;cursor:not-allowed;pointer-events:none}
-/* MY BOOKINGS */
-.booking-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 13px;display:flex;align-items:center;gap:12px;transition:border-color .15s}
+.booking-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:12px 13px;display:flex;align-items:center;gap:12px;transition:border-color .15s;flex-shrink:0}
 .booking-card:hover{border-color:#bbb}
 .booking-icon{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:32px}
 .booking-info{flex:1;min-width:0}
@@ -65,234 +212,785 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;dis
 .booking-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
 .booking-cancel{background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;padding:5px 9px;cursor:pointer;transition:all .15s;flex-shrink:0}
 .booking-cancel:hover{border-color:var(--danger);color:var(--danger)}
-/* TOAST */
-.toast{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:var(--radius);border:1px solid var(--border);font-size:13px;flex-shrink:0}
-.toast.sending{background:#fffde7;border-color:#f9a825;color:#e65100}
-.toast.sent{background:#e8f5e9;border-color:#388e3c;color:var(--good)}
-.toast.failed{background:#ffebee;border-color:#c62828;color:var(--danger)}
-.spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;opacity:.6}
-@keyframes spin{to{transform:rotate(360deg)}}
-/* MODAL */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:flex-end;justify-content:center;z-index:350}
-.modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:22px 20px 34px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -4px 24px rgba(0,0,0,.1);animation:slideUp .2s ease}
-@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-.modal-title{font-size:16px;font-weight:700;color:var(--blue)}
-.modal-sub{font-size:13px;color:var(--muted)}
-.fi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;width:100%;outline:none;transition:border-color .15s}
-.fi:focus{border-color:var(--blue)}
-.fi::placeholder{color:#bbb}
-.field-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-family:'DM Mono',monospace;margin-bottom:4px;display:block}
-.btn{padding:12px 18px;border-radius:var(--radius);border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;width:100%}
-.btn-primary{background:var(--blue);color:#fff}
-.btn-primary:hover{background:#57698a}
-.btn-primary:active{transform:scale(.98)}
-/* SETTINGS */
-.info-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:10px}
-.step-row{display:flex;gap:10px;align-items:flex-start}
-.step-num{font-family:'DM Mono',monospace;font-size:10px;color:#111;background:#ebebeb;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.step-text{font-size:12px;color:var(--muted);line-height:1.5}
-.step-text strong{color:var(--text)}
-.url-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;color:var(--text);font-family:'DM Mono',monospace;font-size:10px;width:100%;outline:none;transition:border-color .15s}
-.url-input:focus{border-color:#111}
-.url-input::placeholder{color:#bbb;font-size:12px;font-family:'DM Sans',sans-serif}
-.status-row{display:flex;align-items:center;gap:8px;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:13px}
-.status-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0}
-.status-dot.connected{background:var(--good);box-shadow:0 0 6px var(--good)}
-.status-dot.error{background:var(--danger)}
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);padding:20px 0}
-/* SCREEN NAV */
-.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
-.screen.active{display:flex}
+input[type=file]{display:none}
 </style>
 </head>
 <body>
 <div id="app">
+
+  <!-- ══ HEADER ══ -->
   <div class="header">
-    <span class="logo">Reserve</span>
-    <div style="display:flex;gap:6px;align-items:center">
-      <span id="headerUser" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"></span>
-      <button class="icon-btn" onclick="showSettings()">&#9881;</button>
-      <button class="icon-btn" onclick="changeUser()">&#128100;</button>
+    <div class="app-toggle">
+      <button class="app-toggle-btn active" id="toggleWO" onclick="switchApp('wo')">WorkOrder</button>
+      <button class="app-toggle-btn" id="toggleRes" onclick="switchApp('res')">Reserve</button>
     </div>
+    <div id="headerRight"><button class="icon-btn" onclick="woShowSettings()">&#9881;</button></div>
   </div>
 
-  <!-- MAIN SCREEN -->
-  <div class="screen active" id="screenMain">
-    <div class="main">
-      <div class="room-tabs" id="roomTabs">
-        <button class="room-tab active" onclick="selectRoom(0)"><span class="room-icon"><svg width="26" height="26" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M38 38 C36 32 40 28 38 22 C36 16 40 12 38 6" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M52 36 C50 30 54 26 52 20 C50 14 54 10 52 4" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><rect x="18" y="52" width="64" height="36" rx="4" fill="currentColor" opacity="0.5"/><line x1="29" y1="52" x2="29" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="40" y1="52" x2="40" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="51" y1="52" x2="51" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="62" y1="52" x2="62" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="73" y1="52" x2="73" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><rect x="18" y="64" width="64" height="9" fill="currentColor" opacity="0.8"/><rect x="16" y="48" width="68" height="8" rx="3" fill="currentColor" opacity="0.9"/></svg></span>Sauna</button>
-        <button class="room-tab" onclick="selectRoom(1)"><span class="room-icon"><svg width="26" height="26" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="46" fill="currentColor" opacity="0.15"/><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="3" fill="none"/><path d="M18 25 Q50 8 82 25 Q65 18 50 16 Q35 18 18 25Z" fill="currentColor" opacity="0.3"/><circle cx="38" cy="28" r="4" fill="currentColor" opacity="0.7"/><circle cx="50" cy="24" r="4" fill="currentColor" opacity="0.7"/><circle cx="62" cy="28" r="4" fill="currentColor" opacity="0.7"/><circle cx="27" cy="34" r="4" fill="currentColor" opacity="0.7"/><circle cx="73" cy="34" r="4" fill="currentColor" opacity="0.7"/><circle cx="22" cy="44" r="4" fill="currentColor" opacity="0.8"/><circle cx="33" cy="38" r="4" fill="currentColor" opacity="0.8"/><circle cx="44" cy="34" r="4" fill="currentColor" opacity="0.8"/><circle cx="56" cy="34" r="4" fill="currentColor" opacity="0.8"/><circle cx="67" cy="38" r="4" fill="currentColor" opacity="0.8"/><circle cx="78" cy="44" r="4" fill="currentColor" opacity="0.8"/><circle cx="20" cy="56" r="4" fill="currentColor" opacity="0.9"/><circle cx="30" cy="50" r="4" fill="currentColor" opacity="0.9"/><circle cx="40" cy="44" r="4" fill="currentColor" opacity="0.9"/><circle cx="50" cy="42" r="4" fill="currentColor" opacity="0.9"/><circle cx="60" cy="44" r="4" fill="currentColor" opacity="0.9"/><circle cx="70" cy="50" r="4" fill="currentColor" opacity="0.9"/><circle cx="80" cy="56" r="4" fill="currentColor" opacity="0.9"/><circle cx="24" cy="66" r="4" fill="currentColor"/><circle cx="34" cy="60" r="4" fill="currentColor"/><circle cx="44" cy="55" r="4" fill="currentColor"/><circle cx="50" cy="53" r="4" fill="currentColor"/><circle cx="56" cy="55" r="4" fill="currentColor"/><circle cx="66" cy="60" r="4" fill="currentColor"/><circle cx="76" cy="66" r="4" fill="currentColor"/><circle cx="30" cy="74" r="4" fill="currentColor"/><circle cx="40" cy="68" r="4" fill="currentColor"/><circle cx="50" cy="65" r="4" fill="currentColor"/><circle cx="60" cy="68" r="4" fill="currentColor"/><circle cx="70" cy="74" r="4" fill="currentColor"/><circle cx="38" cy="80" r="4" fill="currentColor"/><circle cx="50" cy="78" r="4" fill="currentColor"/><circle cx="62" cy="80" r="4" fill="currentColor"/></svg></span>Golf Sim</button>
-        <button class="room-tab" onclick="selectRoom(2)"><span class="room-icon"><svg width="26" height="26" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="68" rx="38" ry="12" fill="none" stroke="currentColor" stroke-width="5"/><rect x="44" y="78" width="12" height="8" rx="2" fill="currentColor"/><rect x="38" y="84" width="24" height="4" rx="2" fill="currentColor"/><circle cx="20" cy="38" r="8" fill="none" stroke="currentColor" stroke-width="4.5"/><path d="M10 68 Q10 52 20 52 Q30 52 30 68" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="50" cy="34" r="8" fill="none" stroke="currentColor" stroke-width="4.5"/><path d="M38 64 Q38 48 50 48 Q62 48 62 64" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="80" cy="38" r="8" fill="none" stroke="currentColor" stroke-width="4.5"/><path d="M70 68 Q70 52 80 52 Q90 52 90 68" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></span>Conf. Room</button>
-      </div>
+  <!-- ══════════════════════════════════════════════════════════
+       WORKORDER APP
+  ══════════════════════════════════════════════════════════ -->
+  <div class="app-view active" id="appWO">
 
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <div class="week-nav">
-          <button class="week-arrow" onclick="shiftWeek(-1)">&#8592;</button>
-          <div class="week-strip" id="weekStrip"></div>
-          <button class="week-arrow" onclick="shiftWeek(1)">&#8594;</button>
+    <!-- WELCOME -->
+    <div class="screen active" id="wo-screen-welcome" style="padding:20px">
+      <div class="welcome-title">Sign In</div>
+      <div style="position:relative">
+        <select class="grouped-select" id="welcomeUserSelect" onchange="onWelcomeSelect(this)">
+          <option value="">&#8212; Select your name &#8212;</option>
+        </select>
+        <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:12px">&#9662;</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:#bbb;font-family:'DM Mono',monospace">or</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <button class="welcome-btn" onclick="woShowScreen('wo-screen-newuser')">
+        <div class="welcome-btn-title">New User</div>
+        <div class="welcome-btn-sub">Register your name and role</div>
+      </button>
+    </div>
+
+    <!-- NEW USER -->
+    <div class="screen" id="wo-screen-newuser" style="padding:20px;gap:0">
+      <div style="font-size:20px;font-weight:700;color:var(--blue);margin-bottom:14px">New User</div>
+      <label class="field-label">Your Name</label>
+      <input class="fi" id="nuName" type="text" placeholder="First Last" maxlength="50">
+      <div style="height:10px"></div>
+      <label class="field-label">Email</label>
+      <input class="fi" id="nuEmail" type="email" placeholder="you@email.com">
+      <div style="height:14px"></div>
+      <label class="field-label">Select your role</label>
+      <div style="height:6px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+        <div class="role-card" id="role-user" onclick="selectRole('user')"><div><div class="role-name">User</div><div class="role-desc">Submit work orders</div></div></div>
+        <div class="role-card" id="role-vendor" onclick="selectRole('vendor')"><div><div class="role-name">Vendor</div><div class="role-desc">Complete work</div></div></div>
+        <div class="role-card" id="role-admin" onclick="selectRole('admin')"><div><div class="role-name">Admin</div><div class="role-desc">Assign work</div></div></div>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary" onclick="submitNewUser()">Get Started &#8594;</button>
+    </div>
+
+    <!-- VENDOR PROF -->
+    <div class="screen" id="wo-screen-vendor-prof" style="padding:20px;gap:0">
+      <div style="font-size:20px;font-weight:700;color:var(--blue);margin-bottom:6px">Your Skills</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;flex-shrink:0">Select each skill, set your grade and rate, then mark one as your primary role.</div>
+      <div class="prof-grid" id="profGrid"></div>
+      <div style="height:10px"></div>
+      <button class="btn btn-primary" onclick="goToVendorReview()">Review &#8594;</button>
+    </div>
+
+    <!-- VENDOR REVIEW -->
+    <div class="screen" id="wo-screen-vendor-review" style="padding:20px;gap:0">
+      <div style="font-size:20px;font-weight:700;color:var(--blue);margin-bottom:14px">Review</div>
+      <div style="flex:1;overflow-y:auto" id="vendorReviewContent"></div>
+      <div style="height:10px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;flex-shrink:0">
+        <button class="btn btn-secondary" onclick="woShowScreen('wo-screen-vendor-prof')">&#8592; Edit</button>
+        <button class="btn btn-primary" onclick="submitVendorProf()">Submit</button>
+      </div>
+    </div>
+
+    <!-- CONFIRM -->
+    <div class="screen" id="wo-screen-confirm" style="padding:20px">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center">
+        <div style="font-size:40px">&#10003;</div>
+        <div style="font-size:20px;font-weight:700;color:var(--blue)">Submitted</div>
+        <div style="font-size:14px;color:var(--muted);max-width:280px;line-height:1.6" id="confirmMsg"></div>
+      </div>
+      <button class="btn btn-secondary" onclick="woShowScreen('wo-screen-welcome')">&#8592; Back to Sign In</button>
+    </div>
+
+    <!-- DISPATCHER -->
+    <div class="screen" id="wo-screen-dispatcher" style="padding:0">
+      <div style="padding:12px 20px 0;flex-shrink:0">
+        <button class="btn btn-primary" onclick="woShowScreen('wo-screen-newjob')" style="border-radius:50px;font-size:14px;padding:11px 20px">+ New Work Order</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;padding:10px 20px 6px;overflow-x:auto">
+        <div class="sw" style="flex:1;min-width:80px"><select class="fi" id="fProperty" onchange="renderAllJobs()" style="padding:8px 24px 8px 10px;font-size:12px"><option value="">All Properties</option></select></div>
+        <div class="sw" style="flex:1;min-width:80px"><select class="fi" id="fStatus" onchange="renderAllJobs()" style="padding:8px 24px 8px 10px;font-size:12px"><option value="">All Priority/Status</option><option>Need</option><option>Low</option><option>Medium</option><option>High</option><option>Immediate</option><option>Done</option></select></div>
+        <div class="sw" style="flex:1;min-width:80px"><select class="fi" id="fVendor" onchange="renderAllJobs()" style="padding:8px 24px 8px 10px;font-size:12px"><option value="">All Vendors</option></select></div>
+      </div>
+      <div class="list-area" id="allJobsList" style="padding:0 20px 20px"></div>
+    </div>
+
+    <!-- NEW JOB -->
+    <div class="screen" id="wo-screen-newjob" style="padding:0">
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0;padding:0 20px 8px">
+        <div style="height:14px"></div>
+        <label class="photo-zone" id="photoZoneD" for="photoFileD">
+          <svg class="cam-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <p>Tap to attach photo</p>
+        </label>
+        <input type="file" id="photoFileD" accept="image/*" onchange="handlePhotoD(this)">
+        <div style="height:10px"></div>
+        <div class="twin-label">Property Name</div>
+        <div class="sw"><select class="fi" id="dProperty" style="padding:11px 28px 11px 13px"><option value="">&#8212; Select property &#8212;</option></select></div>
+        <div style="height:10px"></div>
+        <div class="twin-label">Location</div>
+        <div class="twin-row">
+          <button type="button" class="twin-btn" onclick="triggerLocationFlow()">&#128205; Get</button>
+          <input class="twin-input" id="dLocation" placeholder="Address" onclick="triggerAddressClick()">
         </div>
-        <div class="week-label" id="weekLabel"></div>
+        <div style="height:10px"></div>
+        <div class="twin-label">Priority &amp; Due Date</div>
+        <div class="twin-row">
+          <div class="sw"><select class="fi twin-btn" id="dPriority" onchange="onPriorityChange()" style="padding:11px 28px 11px 12px;font-size:13px;font-weight:500"><option value="">Priority</option><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Immediate">Immediate</option></select></div>
+          <input class="twin-input" id="dDue" type="date" onchange="onDueDateChange()" style="text-align:left">
+        </div>
+        <div style="height:10px"></div>
+        <div class="twin-label">Job Description</div>
+        <div class="twin-row">
+          <div class="sw"><select class="fi twin-btn" id="dCategory" style="padding:11px 28px 11px 12px;font-size:13px"><option value="">Job Type</option></select></div>
+          <input class="twin-input" id="dNote" placeholder="Notes">
+        </div>
+        <div style="height:10px"></div>
+        <div class="twin-label">Assign To</div>
+        <div class="sw"><select class="fi" id="dAssign" style="padding:11px 28px 11px 13px"><option value="">&#8212; Unassigned &#8212;</option></select></div>
+        <div style="height:10px"></div>
+        <div class="twin-label">Estimated Hours</div>
+        <button type="button" class="fi" id="dEstHoursBtn" onclick="openEstHoursForm()" style="text-align:left;cursor:pointer;color:#bbb;background:var(--surface)">&#8212; Select &#8212;</button>
+        <input type="hidden" id="dEstHours">
+        <div style="height:12px"></div>
+        <div id="submitToast"></div>
+        <div id="submitToastSpacer" style="height:0"></div>
+        <div style="height:6px"></div>
+        <button class="btn btn-primary" onclick="submitJob()">Submit Work Order</button>
+        <div style="height:8px"></div>
       </div>
-
-      <div>
-        <div class="section-label" style="margin-bottom:8px" id="gridLabel"></div>
-        <div class="time-grid" id="timeGrid"></div>
-      </div>
-
-      <div id="bookingToastWrap"></div>
     </div>
-  </div>
 
-  <!-- BOOK BUTTON BAR -->
-  <div id="bookBar" style="flex-shrink:0;padding:10px 20px;border-top:1px solid var(--border);background:#fff;display:flex;flex-direction:column;gap:8px">
-    <button id="bookBtn" class="btn btn-primary" onclick="submitBooking()" disabled style="opacity:0.4">
-      <span id="bookBtnLabel">Select time slots above</span>
-    </button>
-  </div>
+    <!-- VENDOR VIEW -->
+    <div class="screen" id="wo-screen-vendor" style="padding:0 20px 0">
+      <div class="tab-bar" id="vendTabBar" style="margin-top:12px">
+        <button class="tab-btn active" onclick="switchVendTab(0)">My Jobs</button>
+        <button class="tab-btn" onclick="switchVendTab(1)">Completed</button>
+      </div>
+      <div class="tab-panels">
+        <div class="tab-panel active" id="vp-0"><div class="list-area" id="vendActiveList"></div></div>
+        <div class="tab-panel" id="vp-1"><div class="list-area" id="vendDoneList"></div></div>
+      </div>
+    </div>
 
-  <!-- MY BOOKINGS BAR -->
-  <div id="myBookingsBar" style="flex-shrink:0;padding:0 20px 16px;background:#fff;display:flex;flex-direction:column;gap:6px">
-    <div class="section-label" style="margin-bottom:4px">My Bookings</div>
-    <div id="myBookings"></div>
-  </div>
-
-  <!-- SETTINGS SCREEN -->
-  <div class="screen" id="screenSettings">
-    <div class="main">
-      <div style="font-size:20px;font-weight:700;color:var(--blue)">Settings</div>
+    <!-- SETTINGS -->
+    <div class="screen" id="wo-screen-settings" style="padding:20px;gap:0">
+      <div style="font-size:20px;font-weight:700;color:var(--blue);margin-bottom:14px">Settings</div>
       <div class="info-box">
-        <div class="step-row"><div class="step-num">1</div><div class="step-text">Open your Google Sheet &rarr; <strong>Extensions &rarr; Apps Script</strong></div></div>
-        <div class="step-row"><div class="step-num">2</div><div class="step-text">Paste <strong>reservations-script.js</strong> into the existing script file alongside your WorkOrder code. Save &amp; re-deploy the same Web App.</div></div>
-        <div class="step-row"><div class="step-num">3</div><div class="step-text">Paste the same Web App URL below. A <strong>Reservations</strong> tab will be created automatically.</div></div>
+        <div class="step-row"><div class="step-num">1</div><div class="step-text">Google Sheet &#8594; <strong>Extensions &#8594; Apps Script</strong></div></div>
+        <div class="step-row"><div class="step-num">2</div><div class="step-text">Paste <strong>workorder-script.js</strong>, save, deploy as <span class="code-i">Web app</span>, access: <span class="code-i">Anyone</span></div></div>
+        <div class="step-row"><div class="step-num">3</div><div class="step-text">Paste Web App URL below. Tabs auto-created: <span class="code-i">WorkOrders</span> <span class="code-i">People</span> <span class="code-i">Properties</span> <span class="code-i">Reservations</span></div></div>
       </div>
+      <div style="height:10px"></div>
       <label class="field-label">Web App URL</label>
-      <input class="url-input" id="settingsUrl" type="url" placeholder="https://script.google.com/macros/s/…">
-      <div class="status-row"><span class="status-dot" id="statusDot"></span><span id="statusText">No URL saved</span></div>
-      <button class="btn btn-primary" onclick="saveUrl()">Save URL</button>
-      <button class="btn" style="background:#fff;border:1px solid #d0d0d0;color:#111" onclick="testConn()">Test Connection</button>
-      <button class="btn" style="background:#fff;border:1px solid #d0d0d0;color:#111" onclick="hideSettings()">&#8592; Back</button>
+      <input class="url-input" id="sheetsUrlInput" type="url" placeholder="https://script.google.com/macros/s/&#8230;">
+      <div style="height:8px"></div>
+      <div class="status-row"><span class="status-dot" id="woStatusDot"></span><span id="woStatusText">No URL saved</span></div>
+      <div style="height:8px"></div>
+      <button class="btn btn-primary" onclick="saveSheetUrl()">Save URL</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary" onclick="woTestConnection()">Test Connection</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary" onclick="woGoBack()">&#8592; Back</button>
     </div>
+
+  </div><!-- /appWO -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       RESERVE APP
+  ══════════════════════════════════════════════════════════ -->
+  <div class="app-view" id="appRes">
+
+    <div class="screen active" id="res-screen-main">
+      <div class="main">
+        <div class="room-tabs" id="roomTabs">
+          <button class="room-tab active" onclick="selectRoom(0)"><span class="room-icon"><svg width="26" height="26" viewBox="0 0 100 100" fill="none"><path d="M38 38 C36 32 40 28 38 22 C36 16 40 12 38 6" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M52 36 C50 30 54 26 52 20 C50 14 54 10 52 4" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><rect x="18" y="52" width="64" height="36" rx="4" fill="currentColor" opacity="0.5"/><line x1="29" y1="52" x2="29" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="40" y1="52" x2="40" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="51" y1="52" x2="51" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="62" y1="52" x2="62" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><line x1="73" y1="52" x2="73" y2="88" stroke="currentColor" stroke-width="2.5" opacity="0.7"/><rect x="18" y="64" width="64" height="9" fill="currentColor" opacity="0.8"/><rect x="16" y="48" width="68" height="8" rx="3" fill="currentColor" opacity="0.9"/></svg></span>Sauna</button>
+          <button class="room-tab" onclick="selectRoom(1)"><span class="room-icon"><svg width="26" height="26" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="currentColor" opacity="0.15"/><circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="3" fill="none"/><path d="M18 25 Q50 8 82 25 Q65 18 50 16 Q35 18 18 25Z" fill="currentColor" opacity="0.3"/><circle cx="38" cy="28" r="4" fill="currentColor" opacity="0.7"/><circle cx="50" cy="24" r="4" fill="currentColor" opacity="0.7"/><circle cx="62" cy="28" r="4" fill="currentColor" opacity="0.7"/><circle cx="27" cy="34" r="4" fill="currentColor" opacity="0.7"/><circle cx="73" cy="34" r="4" fill="currentColor" opacity="0.7"/><circle cx="22" cy="44" r="4" fill="currentColor" opacity="0.8"/><circle cx="33" cy="38" r="4" fill="currentColor" opacity="0.8"/><circle cx="44" cy="34" r="4" fill="currentColor" opacity="0.8"/><circle cx="56" cy="34" r="4" fill="currentColor" opacity="0.8"/><circle cx="67" cy="38" r="4" fill="currentColor" opacity="0.8"/><circle cx="78" cy="44" r="4" fill="currentColor" opacity="0.8"/><circle cx="20" cy="56" r="4" fill="currentColor" opacity="0.9"/><circle cx="30" cy="50" r="4" fill="currentColor" opacity="0.9"/><circle cx="40" cy="44" r="4" fill="currentColor" opacity="0.9"/><circle cx="50" cy="42" r="4" fill="currentColor" opacity="0.9"/><circle cx="60" cy="44" r="4" fill="currentColor" opacity="0.9"/><circle cx="70" cy="50" r="4" fill="currentColor" opacity="0.9"/><circle cx="80" cy="56" r="4" fill="currentColor" opacity="0.9"/><circle cx="24" cy="66" r="4" fill="currentColor"/><circle cx="34" cy="60" r="4" fill="currentColor"/><circle cx="44" cy="55" r="4" fill="currentColor"/><circle cx="50" cy="53" r="4" fill="currentColor"/><circle cx="56" cy="55" r="4" fill="currentColor"/><circle cx="66" cy="60" r="4" fill="currentColor"/><circle cx="76" cy="66" r="4" fill="currentColor"/><circle cx="30" cy="74" r="4" fill="currentColor"/><circle cx="40" cy="68" r="4" fill="currentColor"/><circle cx="50" cy="65" r="4" fill="currentColor"/><circle cx="60" cy="68" r="4" fill="currentColor"/><circle cx="70" cy="74" r="4" fill="currentColor"/><circle cx="38" cy="80" r="4" fill="currentColor"/><circle cx="50" cy="78" r="4" fill="currentColor"/><circle cx="62" cy="80" r="4" fill="currentColor"/></svg></span>Golf Sim</button>
+          <button class="room-tab" onclick="selectRoom(2)"><span class="room-icon"><svg width="26" height="26" viewBox="0 0 100 100" fill="none"><ellipse cx="50" cy="68" rx="38" ry="12" fill="none" stroke="currentColor" stroke-width="5"/><rect x="44" y="78" width="12" height="8" rx="2" fill="currentColor"/><rect x="38" y="84" width="24" height="4" rx="2" fill="currentColor"/><circle cx="20" cy="38" r="8" fill="none" stroke="currentColor" stroke-width="4.5"/><path d="M10 68 Q10 52 20 52 Q30 52 30 68" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="50" cy="34" r="8" fill="none" stroke="currentColor" stroke-width="4.5"/><path d="M38 64 Q38 48 50 48 Q62 48 62 64" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="80" cy="38" r="8" fill="none" stroke="currentColor" stroke-width="4.5"/><path d="M70 68 Q70 52 80 52 Q90 52 90 68" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></span>Conf. Room</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="week-nav">
+            <button class="week-arrow" onclick="shiftWeek(-1)">&#8592;</button>
+            <div class="week-strip" id="weekStrip"></div>
+            <button class="week-arrow" onclick="shiftWeek(1)">&#8594;</button>
+          </div>
+          <div class="week-label" id="weekLabel"></div>
+        </div>
+        <div>
+          <div class="section-label" style="margin-bottom:8px" id="gridLabel"></div>
+          <div class="time-grid" id="timeGrid"></div>
+        </div>
+        <div id="bookingToastWrap"></div>
+      </div>
+    </div>
+
+    <!-- BOOK BUTTON -->
+    <div id="bookBar" style="flex-shrink:0;padding:10px 20px;border-top:1px solid var(--border);background:#fff">
+      <button id="bookBtn" class="btn btn-primary" onclick="submitBooking()" disabled style="opacity:0.4">
+        <span id="bookBtnLabel">Select time slots above</span>
+      </button>
+    </div>
+
+    <!-- MY BOOKINGS -->
+    <div id="myBookingsBar" style="flex-shrink:0;padding:0 20px 16px;background:#fff;display:flex;flex-direction:column;gap:6px">
+      <div class="section-label" style="margin-bottom:4px">My Bookings</div>
+      <div id="myBookings"></div>
+    </div>
+
+  </div><!-- /appRes -->
+
+</div><!-- /app -->
+
+<!-- ── WORKORDER MODALS ── -->
+<div id="locationModal" style="display:none" class="modal-backdrop" onclick="closeModal('locationModal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Set Location</div>
+    <button class="btn btn-primary" onclick="useGpsLocation()">&#128205; Use My Current Location</button>
+    <button class="btn btn-secondary" onclick="useRemoteLocation()">&#128187; Not Onsite &#8212; Enter Address Manually</button>
+  </div>
+</div>
+<div id="addPropModal" style="display:none" class="modal-backdrop" onclick="closeModal('addPropModal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Add New Property</div>
+    <input class="fi" id="newPropInput" placeholder="e.g. 123 Maple St">
+    <button class="btn btn-primary" onclick="confirmAddProperty()">Add Property</button>
+    <button class="btn btn-secondary" onclick="closeModal('addPropModal')">Cancel</button>
+  </div>
+</div>
+<div id="priorityModal" style="display:none" class="modal-backdrop" onclick="closeModal('priorityModal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Priority / Status</div>
+    <div id="priorityModalBtns" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+<div id="estHoursModal" style="display:none" class="modal-backdrop" onclick="closeModal('estHoursModal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Estimated Hours</div>
+    <div id="estHoursBtns" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+  </div>
+</div>
+<div id="jobDetailBackdrop" style="display:none" class="detail-backdrop" onclick="closeJobDetail(event)">
+  <div class="detail-sheet" onclick="event.stopPropagation()">
+    <div class="detail-header" id="ddHeader"></div>
+    <div class="detail-body" id="ddBody"></div>
   </div>
 </div>
 
-<!-- NAME + EMAIL MODAL (first time / change user) -->
+<!-- ── RESERVE MODAL: name+email ── -->
 <div id="nameModal" class="modal-backdrop" style="display:none">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-title">Who are you?</div>
-    <div class="modal-sub">Your name and email will appear on bookings and calendar invites.</div>
-    <div>
-      <label class="field-label">Your Name</label>
-      <input class="fi" id="inputName" type="text" placeholder="First Last">
-    </div>
-    <div>
-      <label class="field-label">Email</label>
-      <input class="fi" id="inputEmail" type="email" placeholder="you@email.com">
-    </div>
+    <div style="font-size:13px;color:var(--muted)">Your name and email will appear on bookings and calendar invites.</div>
+    <div><label class="field-label">Your Name</label><input class="fi" id="inputName" type="text" placeholder="First Last"></div>
+    <div><label class="field-label">Email</label><input class="fi" id="inputEmail" type="email" placeholder="you@email.com"></div>
     <button class="btn btn-primary" onclick="saveName()">Save</button>
   </div>
 </div>
 
+<input type="file" id="userPhotoUpload" accept="image/*" onchange="handleUserPhotoUpload(this)" style="position:fixed;top:-100px;left:-100px;opacity:0;width:1px;height:1px">
+<input type="file" id="vendorPhotoUpload" accept="image/*" onchange="handleVendorPhotoUpload(this)" style="position:fixed;top:-100px;left:-100px;opacity:0;width:1px;height:1px">
+
 <script>
-var ROOMS = [
-  { name:'Sauna',           hours:[6,7,8,9,10,11,12,13,14,15,16,17] },
-  { name:'Golf Simulator',  hours:[7,8,9,10,11,12,13,14,15,16,17] },
-  { name:'Conference Room', hours:[8,9,10,11,12,13,14,15,16,17] },
-];
+// ════════════════════════════════════════════════════════════
+// APP SWITCHER
+// ════════════════════════════════════════════════════════════
+var currentApp = 'wo';
+function switchApp(which) {
+  currentApp = which;
+  document.getElementById('appWO').classList.toggle('active', which==='wo');
+  document.getElementById('appRes').classList.toggle('active', which==='res');
+  document.getElementById('toggleWO').classList.toggle('active', which==='wo');
+  document.getElementById('toggleRes').classList.toggle('active', which==='res');
+  // Update header right buttons
+  var hr = document.getElementById('headerRight');
+  if(which==='wo'){
+    hr.innerHTML = '<button class="icon-btn" onclick="woShowSettings()">&#9881;</button>';
+  } else {
+    hr.innerHTML = '<span id="headerUser" style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--muted)">'+esc(S.currentUser)+'</span>'
+      +'<button class="icon-btn" onclick="changeUser()">&#128100;</button>';
+  }
+}
 
-var S = {
-  room: 0,
-  weekOffset: 0,
-  selectedDate: todayStr(),
-  currentUser: '',
-  currentEmail: '',
-  bookings: [],        // loaded from sheet; format: {id, room(int), date, startMin, endMin, user, email, status}
-  localPending: {},    // slotKey -> true while saving
-  selectedSlots: [],   // array of startMin ints staged for booking
-};
-
-// ── URL helpers ──────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+// SHARED URL / API
+// ════════════════════════════════════════════════════════════
 function getUrl(){ try{ return localStorage.getItem('woUrl')||''; }catch(e){ return ''; } }
 function setUrl(u){ try{ localStorage.setItem('woUrl',u); }catch(e){} }
 function apiCall(payload){
   var u=getUrl(); if(!u) return Promise.reject(new Error('No URL configured — go to Settings'));
   return fetch(u,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}).then(function(r){ return r.json(); });
 }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// ── Init ─────────────────────────────────────────────────────
-function init(){
+// ════════════════════════════════════════════════════════════
+// WORKORDER APP
+// ════════════════════════════════════════════════════════════
+var WO = {
+  role:null, userName:'', vendorName:'',
+  vendors:[], jobs:[], properties:[], people:[], jobTypes:[],
+  photoFileD:null, prevScreen:'wo-screen-welcome',
+  newUser:{name:'',email:'',role:''},
+  proficiencies:{},
+  pendingPriorityJobId:null, pendingEstJobId:null, pendingPhotoJobId:null,
+};
+var PRIORITY_DAYS={Low:30,Medium:7,High:2,Immediate:0};
+var EST_HOURS_LEFT=['1 hr','2 hrs','3 hrs','4 hrs','5 hrs','6 hrs','7 hrs','8 hrs'];
+var EST_HOURS_RIGHT=['1 day','2 days','3 days','4 days','5 days','6 days','7 days','8+ days'];
+var PROFICIENCY_LIST=['Boilers','Cleaning','Electrician','Flooring','Framing','Kitchen Install','Landscaping','Lawn Mowing','Leasing','Maintenance/Handyman/Turns','Paint','Plumber','Roofs','Sheetrock/Mud/Tape','Tile'];
+var PROF_UNITS={'Leasing':'per lease','Kitchen Install':'per box','Flooring':'per SF'};
+var P_COLOR={Need:'#666',Low:'#7a5c00',Medium:'#c47a00',High:'#c45000',Immediate:'#c62828',Done:'#2e7d32'};
+
+function woShowScreen(id){
+  if(id==='wo-screen-settings'){ WO.prevScreen=document.querySelector('#appWO .screen.active').id||'wo-screen-welcome'; updateWoStatus(getUrl()); }
+  document.querySelectorAll('#appWO .screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  var hr=document.getElementById('headerRight');
+  if(id==='wo-screen-newjob'){
+    hr.innerHTML='<button class="icon-btn" onclick="woShowScreen(\'wo-screen-dispatcher\')">&#8592; Back</button>';
+  } else if(['wo-screen-welcome','wo-screen-newuser','wo-screen-settings','wo-screen-vendor-prof','wo-screen-vendor-review','wo-screen-confirm'].indexOf(id)>=0){
+    hr.innerHTML='<button class="icon-btn" onclick="woShowSettings()">&#9881;</button>';
+  } else {
+    hr.innerHTML='<div class="session-info">'+esc(WO.userName)+'<br><span style="color:var(--blue)">'+esc(WO.role||'')+'</span></div>';
+  }
+}
+function woShowSettings(){ WO.prevScreen=(document.querySelector('#appWO .screen.active')||{}).id||'wo-screen-welcome'; woShowScreen('wo-screen-settings'); }
+function woGoBack(){ woShowScreen(WO.prevScreen); }
+
+// Vendor tabs
+function switchVendTab(i){
+  document.querySelectorAll('#vendTabBar .tab-btn').forEach(function(b,j){ b.classList.toggle('active',i===j); });
+  document.querySelectorAll('#wo-screen-vendor .tab-panel').forEach(function(p,j){ p.classList.toggle('active',i===j); });
+  renderVendorJobs(i===1);
+}
+
+// Welcome
+function populateWelcomeDropdown(){
+  var sel=document.getElementById('welcomeUserSelect');
+  sel.innerHTML='<option value="">&#8212; Select your name &#8212;</option>';
+  var groups={Users:WO.people.filter(function(p){return p.role==='user';}),Vendors:WO.people.filter(function(p){return p.role==='vendor';}),Admins:WO.people.filter(function(p){return p.role==='admin';})};
+  Object.keys(groups).forEach(function(label){
+    var people=groups[label]; if(!people.length) return;
+    var grp=document.createElement('optgroup'); grp.label=label;
+    people.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+      var opt=document.createElement('option');
+      opt.value=JSON.stringify({name:p.name,role:p.role});
+      opt.textContent='    '+p.name; grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+}
+function onWelcomeSelect(sel){
+  if(!sel.value) return;
+  var parsed=JSON.parse(sel.value); WO.userName=parsed.name; WO.role=parsed.role;
+  if(parsed.role==='vendor'){ var v=WO.vendors.find(function(x){return x.name===parsed.name;}); WO.vendorName=v?v.name:parsed.name; }
+  enterApp();
+}
+function enterApp(){
+  showLoading();
+  loadWoData().then(function(){
+    hideLoading(); populateVendorDropdowns(); populatePropertyDropdown(); populateJobTypes();
+    if(WO.role==='vendor'){ woShowScreen('wo-screen-vendor'); renderVendorJobs(false); }
+    else{ woShowScreen('wo-screen-dispatcher'); renderAllJobs(); }
+  });
+}
+
+// New user
+function selectRole(role){
+  WO.newUser.role=role;
+  document.querySelectorAll('.role-card').forEach(function(c){c.classList.remove('selected');});
+  document.getElementById('role-'+role).classList.add('selected');
+}
+function submitNewUser(){
+  var name=document.getElementById('nuName').value.trim();
+  var email=document.getElementById('nuEmail').value.trim();
+  if(!name) return alert('Please enter your name.');
+  if(!WO.newUser.role) return alert('Please select a role.');
+  WO.newUser.name=name; WO.newUser.email=email; WO.userName=name; WO.role=WO.newUser.role;
+  if(WO.newUser.role==='vendor'){ buildProficiencyForm(); woShowScreen('wo-screen-vendor-prof'); }
+  else finalizeNewUser();
+}
+function finalizeNewUser(){
+  apiCall({action:'addPerson',person:{name:WO.newUser.name,email:WO.newUser.email,role:WO.newUser.role,proficiencies:'',primaryProf:'',createdAt:new Date().toISOString()}}).catch(function(){});
+  document.getElementById('confirmMsg').textContent="Submitted. You'll get an email once your account is approved.";
+  woShowScreen('wo-screen-confirm');
+}
+
+// Vendor prof
+function buildProficiencyForm(){
+  var grid=document.getElementById('profGrid'); grid.innerHTML='';
+  PROFICIENCY_LIST.forEach(function(prof){
+    var unit=PROF_UNITS[prof]||'per hr'; var key=prof.replace(/[\/\s]/g,'-');
+    var el=document.createElement('div'); el.className='prof-item'; el.id='pi-'+key;
+    el.innerHTML='<div class="prof-header" onclick="toggleProf(\''+key+'\',\''+prof+'\')" id="ph-'+key+'">'
+      +'<div class="prof-check" id="pc-'+key+'"></div><div class="prof-name">'+esc(prof)+'</div>'
+      +'<button class="prof-primary-btn" id="pp-'+key+'" onclick="event.stopPropagation();setPrimary(\''+key+'\',\''+prof+'\')">&#9733; Primary</button></div>'
+      +'<div class="prof-detail" id="pd-'+key+'">'
+        +'<div class="prof-detail-row">'
+          +'<div><div style="font-size:11px;color:var(--blue);margin-bottom:4px">Grade</div>'
+          +'<select class="fi" id="pg-'+key+'" style="padding:8px 10px;font-size:13px"><option value="">Select</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>'
+          +'<div><div style="font-size:11px;color:var(--blue);margin-bottom:4px">Rate ('+esc(unit)+')</div>'
+          +'<input class="fi" id="pr-'+key+'" type="number" placeholder="0" style="padding:8px 10px;font-size:13px"></div>'
+        +'</div>'
+        +'<div class="grade-helper"><strong>A</strong> Admin upgrade only &middot; <strong>B</strong> Refs+approved &middot; <strong>C</strong> Exp+approved &middot; <strong>D</strong> Auto-approved</div>'
+      +'</div>';
+    grid.appendChild(el);
+  });
+}
+function toggleProf(key,prof){
+  var header=document.getElementById('ph-'+key),detail=document.getElementById('pd-'+key),check=document.getElementById('pc-'+key);
+  var isOn=header.classList.toggle('selected');
+  check.innerHTML=isOn?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>':'';
+  detail.classList.toggle('open',isOn);
+  if(!isOn) delete WO.proficiencies[prof];
+  else if(!WO.proficiencies[prof]) WO.proficiencies[prof]={grade:'',rate:'',primary:false};
+}
+function setPrimary(key,prof){
+  PROFICIENCY_LIST.forEach(function(p){ var k=p.replace(/[\/\s]/g,'-'); var btn=document.getElementById('pp-'+k); if(btn)btn.classList.remove('is-primary'); if(WO.proficiencies[p])WO.proficiencies[p].primary=false; });
+  var btn=document.getElementById('pp-'+key); if(btn)btn.classList.add('is-primary');
+  if(!WO.proficiencies[prof]){toggleProf(key,prof);} if(!WO.proficiencies[prof])WO.proficiencies[prof]={};
+  WO.proficiencies[prof].primary=true;
+}
+function goToVendorReview(){
+  var selected=PROFICIENCY_LIST.filter(function(p){var k=p.replace(/[\/\s]/g,'-');return document.getElementById('ph-'+k)&&document.getElementById('ph-'+k).classList.contains('selected');});
+  if(!selected.length) return alert('Select at least one proficiency.');
+  WO.proficiencies={};
+  selected.forEach(function(prof){
+    var k=prof.replace(/[\/\s]/g,'-');
+    var grade=(document.getElementById('pg-'+k)||{}).value||'';
+    var rate=(document.getElementById('pr-'+k)||{}).value||'';
+    var primary=document.getElementById('pp-'+k)&&document.getElementById('pp-'+k).classList.contains('is-primary');
+    WO.proficiencies[prof]={grade:grade,rate:rate,primary:primary};
+  });
+  if(!Object.values(WO.proficiencies).some(function(p){return p.primary;})) return alert('Please set one Primary role (tap star).');
+  var primaryProf=Object.keys(WO.proficiencies).find(function(k){return WO.proficiencies[k].primary;})||'';
+  var html='<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Review before submitting.</div>'
+    +'<div style="font-size:13px;margin-bottom:8px"><strong>Name:</strong> '+esc(WO.newUser.name)+'</div>'
+    +'<div style="font-size:13px;margin-bottom:8px"><strong>Primary Role:</strong> <span style="color:var(--blue);font-weight:600">'+esc(primaryProf)+'</span></div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px">Proficiencies</div>';
+  Object.keys(WO.proficiencies).forEach(function(name){
+    var v=WO.proficiencies[name]; var unit=PROF_UNITS[name]||'hr';
+    html+='<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><strong>'+esc(name)+'</strong>'+(v.primary?' &#9733;':'')+' <span style="color:var(--muted);margin-left:8px">Grade: '+(v.grade||'-')+' &middot; $'+(v.rate||'0')+'/'+unit+'</span></div>';
+  });
+  document.getElementById('vendorReviewContent').innerHTML=html;
+  woShowScreen('wo-screen-vendor-review');
+}
+function submitVendorProf(){
+  var primaryProf=Object.keys(WO.proficiencies).find(function(k){return WO.proficiencies[k].primary;})||'';
+  apiCall({action:'addPerson',person:{name:WO.newUser.name,email:WO.newUser.email,role:'vendor',proficiencies:JSON.stringify(WO.proficiencies),primaryProf:primaryProf,createdAt:new Date().toISOString()}}).catch(function(){});
+  document.getElementById('confirmMsg').textContent="Submitted. You'll get an email once your account is approved.";
+  woShowScreen('wo-screen-confirm');
+}
+
+// Data
+function loadWoData(){
+  return apiCall({action:'getData'}).then(function(r){
+    if(r.success){ WO.jobs=r.jobs||[]; WO.vendors=r.vendors||[]; WO.properties=r.properties||[]; WO.people=r.people||[]; WO.jobTypes=r.jobTypes||[]; }
+    populateWelcomeDropdown();
+  }).catch(function(){
+    WO.jobs=getDemoJobs(); WO.vendors=getDemoVendors(); WO.properties=getDemoProperties(); WO.people=getDemoPeople(); WO.jobTypes=[];
+    populateWelcomeDropdown();
+  });
+}
+function populateVendorDropdowns(){
+  var opts='<option value="">&#8212; Unassigned &#8212;</option>'+WO.vendors.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(vendorLabel(v))+'</option>';}).join('');
+  document.getElementById('dAssign').innerHTML=opts;
+  document.getElementById('fVendor').innerHTML='<option value="">All Vendors</option>'+WO.vendors.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join('');
+}
+function populatePropertyDropdown(){
+  var base='<option value="">&#8212; Select property &#8212;</option>'+WO.properties.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('')+'<option value="__add">+ Add New&#8230;</option>';
+  document.getElementById('dProperty').innerHTML=base;
+  document.getElementById('fProperty').innerHTML='<option value="">All Properties</option>'+WO.properties.map(function(p){return '<option value="'+esc(p)+'">'+esc(p)+'</option>';}).join('');
+  document.getElementById('dProperty').onchange=function(){if(this.value==='__add'){openModal('addPropModal');this.value='';}};
+}
+function populateJobTypes(){
+  var el=document.getElementById('dCategory'); if(!el) return;
+  var types=WO.jobTypes&&WO.jobTypes.length?WO.jobTypes:['Electrical','Plumbing','Lawn Mowing','Snow Removal','Landscaping','Cleaning','Repairs','Painting','Flooring','Roofing','HVAC','General Maintenance'];
+  el.innerHTML='<option value="">Job Type</option>'+types.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
+}
+function vendorLabel(v){ var parts=[v.name]; if(v.primaryProf||v.title)parts.push(v.primaryProf||v.title); if(v.grade)parts.push(v.grade); if(v.rate)parts.push('$'+v.rate+'/hr'); return parts.join('  |  '); }
+
+// Priority/date
+function priorityToDate(p){ var days=PRIORITY_DAYS[p]; if(days===undefined)return ''; var d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+function dateToPriority(s){ if(!s)return ''; var days=Math.round((new Date(s)-new Date())/86400000); if(days<=0)return 'Immediate'; if(days<=2)return 'High'; if(days<=7)return 'Medium'; return 'Low'; }
+function onPriorityChange(){ var p=document.getElementById('dPriority').value; if(p)document.getElementById('dDue').value=priorityToDate(p); }
+function onDueDateChange(){ var d=document.getElementById('dDue').value; if(d)document.getElementById('dPriority').value=dateToPriority(d); }
+function fmtDate(s){ if(!s)return ''; var d=new Date(s+'T12:00:00'); return (d.getMonth()+1)+'/'+(d.getDate())+'/'+String(d.getFullYear()).slice(2); }
+function fmtDateTime(s){ if(!s)return ''; var d=new Date(s); var mo=d.getMonth()+1,dy=d.getDate(),yr=String(d.getFullYear()).slice(2); var h=d.getHours(),m=('0'+d.getMinutes()).slice(-2); var ampm=h>=12?'pm':'am'; var h12=h%12||12; return mo+'/'+dy+'/'+yr+', '+h12+':'+m+ampm; }
+function priorityClass(p){ var map={Need:'p-need',Low:'p-low',Medium:'p-medium',High:'p-high',Immediate:'p-immediate',Done:'p-done',Open:'p-need'}; return map[p]||'p-need'; }
+
+// Job card
+function jobCardHTML(j,showAssign){
+  var status=j.status||'Need'; var pClass=priorityClass(status);
+  var canUploadUser=(WO.role==='user'&&j.submittedBy===WO.userName)||WO.role==='admin';
+  var canUploadVendor=WO.role==='vendor'&&j.assignTo===WO.vendorName;
+  var userPhotoUrl=j.userPhotoUrl||j.photoUrl||'';
+  var right='<button class="jc-pill '+pClass+'" id="pBtn-'+esc(j.id)+'">'+esc(status)+'</button>';
+  right+='<button class="jc-pill" id="eBtn-'+esc(j.id)+'" style="color:var(--blue);border-color:var(--blue-border)">'+(j.estHours||'Est. Hours')+'</button>';
+  if(showAssign){ var vopts='<option value="">Unassigned</option>'; WO.vendors.forEach(function(v){vopts+='<option value="'+esc(v.name)+'"'+(j.assignTo===v.name?' selected':'')+'>'+esc(vendorLabel(v))+'</option>';}); right+='<select class="jc-pill assign-select" id="aBtn-'+esc(j.id)+'">'+vopts+'</select>'; }
+  var userPill=userPhotoUrl?'<button class="jc-photo-pill has-photo" id="upBtn-'+esc(j.id)+'">&#128247; See User Photo</button>':(canUploadUser?'<button class="jc-photo-pill can-upload" id="upBtn-'+esc(j.id)+'">&#128247; Add User Photo</button>':'<button class="jc-photo-pill no-photo" disabled>No User Photo</button>');
+  var vendorPill=j.vendorPhotoUrl?'<button class="jc-photo-pill vendor-photo" id="vpBtn-'+esc(j.id)+'">&#128247; See Vendor Photo</button>':(canUploadVendor?'<button class="jc-photo-pill can-upload" id="vpBtn-'+esc(j.id)+'">&#128247; Add Vendor Photo</button>':'<button class="jc-photo-pill no-vendor" disabled>No Vendor Photo</button>');
+  return '<div class="job-card" id="card-'+esc(j.id)+'">'
+    +'<div class="jc-top">'
+      +'<div class="jc-left" id="jcl-'+esc(j.id)+'">'
+        +'<div class="jc-title">'+esc(j.property||'No property')+'</div>'
+        +(j.location?'<div class="jc-row">'+esc(j.location)+'</div>':'')
+        +'<div class="jc-row">'+esc(j.assignTo||'Unassigned')+' &#8212; '+fmtDateTime(j.submittedAt||j.date||'')+'</div>'
+        +(j.due?'<div class="jc-row">Due &#8212; '+fmtDate(j.due)+'</div>':'')
+        +'<div class="jc-row">'+esc(j.category||'&#8212;')+(j.note?' &#8212; '+esc(j.note):'')+'</div>'
+      +'</div>'
+      +'<div class="jc-divider"></div>'
+      +'<div class="jc-right">'+right+'</div>'
+    +'</div>'
+    +'<div class="jc-photo-row">'+userPill+vendorPill+'</div>'
+    +'</div>';
+}
+function wireCardButtons(j,showAssign){
+  var jcl=document.getElementById('jcl-'+j.id); if(jcl)jcl.onclick=function(){openJobDetail(j.id);};
+  var pb=document.getElementById('pBtn-'+j.id); if(pb)pb.onclick=function(){openPriorityModal(j.id);};
+  var eb=document.getElementById('eBtn-'+j.id); if(eb)eb.onclick=function(){openEstHoursModal(j.id);};
+  if(showAssign){var ab=document.getElementById('aBtn-'+j.id); if(ab)ab.onchange=function(){assignJob(j.id,this.value);};}
+  var upBtn=document.getElementById('upBtn-'+j.id);
+  if(upBtn){ var upu=j.userPhotoUrl||j.photoUrl||''; if(upu){upBtn.onclick=function(){openFullscreen(upu,'Work Order Photo');};}else{upBtn.onclick=function(){triggerUserPhotoUpload(j.id);};} }
+  var vpBtn=document.getElementById('vpBtn-'+j.id);
+  if(vpBtn){ if(j.vendorPhotoUrl){vpBtn.onclick=function(){openFullscreen(j.vendorPhotoUrl,'Vendor Photo');};}else{vpBtn.onclick=function(){triggerVendorPhotoUpload(j.id);};} }
+}
+function renderAllJobs(){
+  var sf=document.getElementById('fStatus').value,vf=document.getElementById('fVendor').value,pf=document.getElementById('fProperty').value;
+  var jobs=WO.jobs.filter(function(j){return(!sf||(j.status||'Need')===sf)&&(!vf||j.assignTo===vf)&&(!pf||j.property===pf);}).sort(function(a,b){return new Date(b.submittedAt||0)-new Date(a.submittedAt||0);});
+  var list=document.getElementById('allJobsList');
+  if(!jobs.length){list.innerHTML='<div class="empty-state"><div style="font-size:32px">&#128235;</div><div style="font-size:13px">No jobs match</div></div>';return;}
+  list.innerHTML=jobs.map(function(j){return jobCardHTML(j,true);}).join('');
+  jobs.forEach(function(j){wireCardButtons(j,true);});
+}
+function renderVendorJobs(done){
+  var mine=WO.jobs.filter(function(j){return j.assignTo===WO.vendorName;});
+  var jobs=done?mine.filter(function(j){return j.status==='Done';}):mine.filter(function(j){return j.status!=='Done';});
+  var listId=done?'vendDoneList':'vendActiveList'; var list=document.getElementById(listId);
+  if(!jobs.length){list.innerHTML='<div class="empty-state"><div style="font-size:32px">'+(done?'&#9989;':'&#128235;')+'</div><div style="font-size:13px">'+(done?'No completed jobs':'No active jobs')+'</div></div>';return;}
+  list.innerHTML=jobs.map(function(j){return jobCardHTML(j,false);}).join('');
+  jobs.forEach(function(j){wireCardButtons(j,false);});
+}
+
+// Job detail
+function openJobDetail(jobId){
+  var j=WO.jobs.find(function(x){return x.id===jobId;}); if(!j) return;
+  var status=j.status||'Need'; var pClass=priorityClass(status);
+  var vendor=WO.vendors.find(function(v){return v.name===j.assignTo;});
+  var vendorLine=vendor?[vendor.name,vendor.primaryProf||vendor.title,vendor.grade,vendor.rate?'$'+vendor.rate+'/hr':null].filter(Boolean).join('  \u00b7  '):(j.assignTo||'Unassigned');
+  var canUploadUser=(WO.role==='user'&&j.submittedBy===WO.userName)||WO.role==='admin';
+  var canUploadVendor=WO.role==='vendor'&&j.assignTo===WO.vendorName;
+  var userPhotoUrl=j.userPhotoUrl||j.photoUrl||'';
+  var vopts='<option value="">Unassigned</option>'; WO.vendors.forEach(function(v){vopts+='<option value="'+esc(v.name)+'"'+(j.assignTo===v.name?' selected':'')+'>'+esc(vendorLabel(v))+'</option>';});
+  var hLeft='<div class="detail-header-left"><div class="detail-title">'+esc(j.property||'No property')+'</div>'+(j.location?'<div class="detail-location">'+esc(j.location)+'</div>':'')+'<div class="detail-row">'+esc(j.assignTo||'Unassigned')+' - '+fmtDateTime(j.submittedAt||j.date||'')+'</div>'+(j.due?'<div class="detail-row">Due - '+fmtDate(j.due)+'</div>':'')+'<div class="detail-row">'+esc(j.category||'-')+(j.note?' - '+esc(j.note):'')+'</div></div>';
+  var hRight='<div class="detail-header-right"><button class="jc-pill '+pClass+'" id="ddPri">'+esc(status)+'</button><button class="jc-pill" id="ddEst" style="color:var(--blue);border-color:var(--blue-border)">'+(j.estHours||'Est. Hours')+'</button><select class="jc-pill assign-select" id="ddAsgn">'+vopts+'</select>'+(j.completedAt?'<span class="jc-pill" style="color:var(--muted);font-size:10px;cursor:default">Done '+fmtDate(j.completedAt)+'</span>':'')+'</div>';
+  document.getElementById('ddHeader').innerHTML=hLeft+'<div class="detail-header-divider"></div>'+hRight;
+  document.getElementById('ddPri').onclick=function(){openPriorityModal(j.id);};
+  document.getElementById('ddEst').onclick=function(){openEstHoursModal(j.id);};
+  document.getElementById('ddAsgn').onchange=function(){assignJob(j.id,this.value);};
+  var userPhotoHTML=userPhotoUrl?'<img class="detail-pimg" id="ddUPhoto" src="'+esc(userPhotoUrl)+'" alt="photo">':(canUploadUser?'<button class="jc-photo-pill can-upload" id="ddUUpload" style="height:60px;display:flex;align-items:center;justify-content:center">Upload User Photo</button>':'<div class="detail-pnone">No photo attached</div>');
+  var vendorPhotoHTML=j.vendorPhotoUrl?'<img class="detail-pimg" id="ddVPhoto" src="'+esc(j.vendorPhotoUrl)+'" alt="vendor photo">':(canUploadVendor?'<button class="jc-photo-pill can-upload" id="ddVUpload" style="height:60px;display:flex;align-items:center;justify-content:center">Upload Vendor Photo</button>':'<div class="detail-pnone">Pending vendor upload</div>');
+  var bodyHTML=(j.note?'<div><div class="detail-slabel">Notes</div><div class="detail-value">'+esc(j.note)+'</div></div>':'')+'<div><div class="detail-slabel">Assigned To</div><div class="detail-value">'+esc(vendorLine)+'</div></div>'+'<div><div class="detail-slabel">Photos</div><div class="detail-photos"><div class="detail-photo-block"><div class="detail-plabel">Work Order Photo</div>'+userPhotoHTML+'</div><div class="detail-photo-block"><div class="detail-plabel">Vendor Completion Photo</div>'+vendorPhotoHTML+'</div></div></div>';
+  document.getElementById('ddBody').innerHTML=bodyHTML;
+  var uph=document.getElementById('ddUPhoto'); if(uph)uph.onclick=function(){openFullscreen(userPhotoUrl,'Work Order Photo');};
+  var vph=document.getElementById('ddVPhoto'); if(vph)vph.onclick=function(){openFullscreen(j.vendorPhotoUrl,'Vendor Photo');};
+  var uup=document.getElementById('ddUUpload'); if(uup)uup.onclick=function(){triggerUserPhotoUpload(j.id);};
+  var vup=document.getElementById('ddVUpload'); if(vup)vup.onclick=function(){triggerVendorPhotoUpload(j.id);};
+  document.getElementById('jobDetailBackdrop').style.display='flex';
+}
+function closeJobDetail(e){ if(e&&e.target.id!=='jobDetailBackdrop')return; document.getElementById('jobDetailBackdrop').style.display='none'; }
+
+// Priority modal
+function openPriorityModal(jobId){
+  WO.pendingPriorityJobId=jobId; var job=WO.jobs.find(function(j){return j.id===jobId;}); var cur=job?(job.status||'Need'):'Need';
+  var container=document.getElementById('priorityModalBtns'); container.innerHTML='';
+  ['Need','Low','Medium','High','Immediate','Done'].forEach(function(o){
+    var btn=document.createElement('button');
+    btn.style.cssText='padding:11px 14px;border-radius:10px;border:1px solid '+(o===cur?'var(--blue)':'#e0e0e0')+';background:'+(o===cur?'var(--blue-bg)':'#f5f5f5')+';color:'+(P_COLOR[o]||'#111')+';font-family:\'DM Sans\',sans-serif;font-size:14px;font-weight:'+(o===cur?'700':'500')+';cursor:pointer;text-align:left;width:100%';
+    btn.textContent=o+(o===cur?' \u2713':''); btn.onclick=function(){setPriorityFromModal(o);}; container.appendChild(btn);
+  });
+  openModal('priorityModal');
+}
+function setPriorityFromModal(newStatus){
+  var id=WO.pendingPriorityJobId; var job=WO.jobs.find(function(j){return j.id===id;});
+  if(!job){closeModal('priorityModal');return;}
+  if(job.status==='Done'&&newStatus!=='Done'){if(!confirm('This will re-open the work order. Are you sure?')){closeModal('priorityModal');return;}}
+  job.status=newStatus; if(newStatus==='Done')job.completedAt=new Date().toISOString();
+  if(PRIORITY_DAYS[newStatus]!==undefined)job.due=priorityToDate(newStatus);
+  closeModal('priorityModal');
+  apiCall({action:'updateJob',id:id,fields:{status:newStatus,due:job.due||'',completedAt:job.completedAt||''}}).catch(function(){});
+  if(WO.role==='vendor'){renderVendorJobs(false);renderVendorJobs(true);}else renderAllJobs();
+  if(document.getElementById('jobDetailBackdrop').style.display==='flex')openJobDetail(id);
+}
+
+// Est hours modal
+function openEstHoursModal(jobId){ WO.pendingEstJobId=jobId; var job=WO.jobs.find(function(j){return j.id===jobId;}); renderEstHoursModal(job?(job.estHours||''):'');  openModal('estHoursModal'); }
+function openEstHoursForm(){ WO.pendingEstJobId='__form__'; renderEstHoursModal(document.getElementById('dEstHours').value||''); openModal('estHoursModal'); }
+function renderEstHoursModal(current){
+  var container=document.getElementById('estHoursBtns');
+  var leftDiv=document.createElement('div'); leftDiv.style.cssText='display:flex;flex-direction:column;gap:6px';
+  var lL=document.createElement('div'); lL.style.cssText='font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);font-family:\'DM Mono\',monospace;margin-bottom:2px'; lL.textContent='Hours'; leftDiv.appendChild(lL);
+  EST_HOURS_LEFT.forEach(function(o){ var btn=document.createElement('button'); btn.style.cssText='padding:9px 8px;border-radius:8px;border:1px solid '+(o===current?'var(--blue)':'#e0e0e0')+';background:'+(o===current?'var(--blue-bg)':'#f5f5f5')+';color:'+(o===current?'var(--blue)':'#111')+';font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:'+(o===current?'700':'400')+';cursor:pointer;text-align:center;width:100%'; btn.textContent=o; btn.onclick=function(){setEstHours(o);}; leftDiv.appendChild(btn); });
+  var rightDiv=document.createElement('div'); rightDiv.style.cssText='display:flex;flex-direction:column;gap:6px';
+  var rL=document.createElement('div'); rL.style.cssText='font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);font-family:\'DM Mono\',monospace;margin-bottom:2px'; rL.textContent='Days'; rightDiv.appendChild(rL);
+  EST_HOURS_RIGHT.forEach(function(o){ var btn=document.createElement('button'); btn.style.cssText='padding:9px 8px;border-radius:8px;border:1px solid '+(o===current?'var(--blue)':'#e0e0e0')+';background:'+(o===current?'var(--blue-bg)':'#f5f5f5')+';color:'+(o===current?'var(--blue)':'#111')+';font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:'+(o===current?'700':'400')+';cursor:pointer;text-align:center;width:100%'; btn.textContent=o; btn.onclick=function(){setEstHours(o);}; rightDiv.appendChild(btn); });
+  var bidBtn=document.createElement('button'); bidBtn.style.cssText='font-family:\'DM Sans\',sans-serif;font-size:13px;padding:11px 8px;border-radius:8px;border:1px solid '+(current==='Need a Bid'?'var(--blue)':'#bbb')+';background:'+(current==='Need a Bid'?'var(--blue-bg)':'#d0d0d0')+';color:'+(current==='Need a Bid'?'var(--blue)':'#444')+';cursor:pointer;text-align:center;width:100%;grid-column:1/-1'; bidBtn.textContent='Need a Bid'; bidBtn.onclick=function(){setEstHours('Need a Bid');};
+  container.innerHTML=''; container.style.display='grid'; container.style.gridTemplateColumns='1fr 1fr'; container.style.gap='8px';
+  container.appendChild(leftDiv); container.appendChild(rightDiv); container.appendChild(bidBtn);
+}
+function setEstHours(val){
+  var id=WO.pendingEstJobId;
+  if(id==='__form__'){ document.getElementById('dEstHours').value=val; var btn=document.getElementById('dEstHoursBtn'); if(btn){btn.textContent=val;btn.style.color='#111';} closeModal('estHoursModal'); return; }
+  var job=WO.jobs.find(function(j){return j.id===id;}); if(!job){closeModal('estHoursModal');return;}
+  job.estHours=val; closeModal('estHoursModal');
+  apiCall({action:'updateJob',id:id,fields:{estHours:val}}).catch(function(){});
+  if(WO.role==='vendor'){renderVendorJobs(false);renderVendorJobs(true);}else renderAllJobs();
+  if(document.getElementById('jobDetailBackdrop').style.display==='flex')openJobDetail(id);
+}
+
+// Assign job
+function assignJob(id,vendorName){ var job=WO.jobs.find(function(j){return j.id===id;}); if(!job)return; job.assignTo=vendorName; apiCall({action:'updateJob',id:id,fields:{assignTo:vendorName,status:job.status,due:job.due||''}}).catch(function(){}); renderAllJobs(); if(document.getElementById('jobDetailBackdrop').style.display==='flex')openJobDetail(id); }
+
+// Submit job
+function submitJob(){
+  var prop=document.getElementById('dProperty').value,loc=document.getElementById('dLocation').value.trim(),cat=document.getElementById('dCategory').value,note=document.getElementById('dNote').value.trim(),due=document.getElementById('dDue').value,pri=document.getElementById('dPriority').value,assign=document.getElementById('dAssign').value,estH=document.getElementById('dEstHours').value;
+  if(!prop)return alert('Property is required.'); if(!loc)return alert('Location is required.'); if(!cat)return alert('Job Type is required.');
+  var url=getUrl(); if(!url){showWoToast('failed','No Sheets URL &#8212; go to Settings');return;}
+  showWoToast('sending','Saving&#8230;');
+  var doUpload=WO.photoFileD?fileToBase64(WO.photoFileD).then(function(b64){return apiCall({action:'uploadPhoto',unit:prop,category:cat,filename:prop+'_'+cat+'_'+Date.now()+'.jpg',mimeType:WO.photoFileD.type||'image/jpeg',base64:b64});}).then(function(r){return r.success?r.viewUrl:'';}).catch(function(){return '';}):Promise.resolve('');
+  doUpload.then(function(photoUrl){
+    return apiCall({action:'submitJob',job:{property:prop,location:loc,category:cat,note:note,due:due,priority:pri,assignTo:assign,estHours:estH,userPhotoUrl:photoUrl,submittedBy:WO.userName,status:(pri||'Need'),date:new Date().toLocaleDateString(),submittedAt:new Date().toISOString()}});
+  }).then(function(r){
+    if(!r.success)throw new Error(r.error);
+    showWoToast('sent','&#10003; Work order submitted'); WO.jobs.unshift(r.job);
+    setTimeout(function(){
+      ['dProperty','dNote','dDue'].forEach(function(id){document.getElementById(id).value='';});
+      document.getElementById('dCategory').value=''; document.getElementById('dPriority').value=''; document.getElementById('dAssign').value=''; document.getElementById('dEstHours').value='';
+      var eb=document.getElementById('dEstHoursBtn'); if(eb){eb.textContent='&#8212; Select &#8212;';eb.style.color='#bbb';}
+      document.getElementById('dLocation').value=''; resetPhotoD(); hideWoToast(); renderAllJobs(); woShowScreen('wo-screen-dispatcher');
+    },1200);
+  }).catch(function(e){showWoToast('failed','Failed: '+e.message);});
+}
+function showWoToast(type,msg){ var t=document.getElementById('submitToast'),s=document.getElementById('submitToastSpacer'); t.className='toast '+type; t.innerHTML=(type==='sending'?'<div class="spinner"></div>':'')+msg; if(s)s.style.height='8px'; }
+function hideWoToast(){ var t=document.getElementById('submitToast'),s=document.getElementById('submitToastSpacer'); t.className=''; t.innerHTML=''; if(s)s.style.height='0'; }
+
+// Location
+function triggerLocationFlow(){openModal('locationModal');}
+function triggerAddressClick(){ var inp=document.getElementById('dLocation'); if(!inp.value)openModal('locationModal'); }
+function useGpsLocation(){ closeModal('locationModal'); var inp=document.getElementById('dLocation'); inp.value='Getting location\u2026'; inp.readOnly=true; getGpsLocation().then(function(addr){inp.value=addr||'Location unavailable';inp.readOnly=false;}); }
+function useRemoteLocation(){ closeModal('locationModal'); var inp=document.getElementById('dLocation'); inp.value=''; inp.readOnly=false; inp.placeholder='Enter address manually'; inp.focus(); }
+function getGpsLocation(){ return new Promise(function(resolve){ if(!navigator.geolocation){resolve('');return;} navigator.geolocation.getCurrentPosition(function(pos){ fetch('https://nominatim.openstreetmap.org/reverse?lat='+pos.coords.latitude+'&lon='+pos.coords.longitude+'&format=json',{headers:{'Accept-Language':'en'}}).then(function(r){return r.json();}).then(function(data){var a=data.address||{};resolve([(a.house_number?a.house_number+' ':'')+a.road,a.city||a.town||a.village||'',a.state||''].filter(Boolean).join(', '));}).catch(function(){resolve('');});},function(){resolve('');},{timeout:8000,maximumAge:30000}); }); }
+
+// Add property
+function confirmAddProperty(){ var val=document.getElementById('newPropInput').value.trim(); if(!val)return; WO.properties.push(val); populatePropertyDropdown(); document.getElementById('dProperty').value=val; document.getElementById('newPropInput').value=''; closeModal('addPropModal'); apiCall({action:'addProperty',name:val}).catch(function(){}); }
+
+// Photos
+function handlePhotoD(input){ var file=input.files[0]; if(!file)return; WO.photoFileD=file; var url=URL.createObjectURL(file); document.getElementById('photoZoneD').innerHTML='<img src="'+url+'"><div class="overlay"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>'; }
+function resetPhotoD(){ WO.photoFileD=null; document.getElementById('photoFileD').value=''; document.getElementById('photoZoneD').innerHTML='<svg class="cam-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><p>Tap to attach photo</p>'; }
+function triggerUserPhotoUpload(jobId){ WO.pendingPhotoJobId=jobId; var inp=document.getElementById('userPhotoUpload'); inp.value=''; inp.click(); }
+function triggerVendorPhotoUpload(jobId){ WO.pendingPhotoJobId=jobId; var inp=document.getElementById('vendorPhotoUpload'); inp.value=''; inp.click(); }
+function handleUserPhotoUpload(input){ var file=input.files[0]; if(file)uploadJobPhoto(WO.pendingPhotoJobId,file,'user'); }
+function handleVendorPhotoUpload(input){ var file=input.files[0]; if(file)uploadJobPhoto(WO.pendingPhotoJobId,file,'vendor'); }
+function uploadJobPhoto(jobId,file,type){ var job=WO.jobs.find(function(j){return j.id===jobId;}); if(!job)return; fileToBase64(file).then(function(b64){return apiCall({action:'uploadPhoto',unit:job.property||'unknown',category:type==='vendor'?'vendor-completion':'work-order',filename:(job.property||'job')+'_'+type+'_'+Date.now()+'.jpg',mimeType:file.type||'image/jpeg',base64:b64});}).then(function(r){ if(!r.success)throw new Error(r.error); var field=type==='vendor'?'vendorPhotoUrl':'userPhotoUrl'; job[field]=r.viewUrl; return apiCall({action:'updateJob',id:jobId,fields:{[field]:r.viewUrl}}); }).then(function(){ if(WO.role==='vendor'){renderVendorJobs(false);renderVendorJobs(true);}else renderAllJobs(); if(document.getElementById('jobDetailBackdrop').style.display==='flex')openJobDetail(jobId); }).catch(function(){}); }
+
+// Fullscreen
+function openFullscreen(url,title){ var el=document.createElement('div'); el.className='fs-overlay'; el.innerHTML='<img class="fs-img" src="'+esc(url)+'" alt="'+(title||'Photo')+'">'; el.onclick=function(){el.remove();}; document.body.appendChild(el); }
+
+// WO Settings
+function updateWoStatus(u){ var dot=document.getElementById('woStatusDot'),txt=document.getElementById('woStatusText'); if(!dot)return; dot.className=u?'status-dot connected':'status-dot'; txt.textContent=u?'URL saved \u2014 ready':'No URL saved'; if(u)document.getElementById('sheetsUrlInput').value=u; }
+function saveSheetUrl(){ var u=document.getElementById('sheetsUrlInput').value.trim(); if(!u)return alert('Paste a URL first.'); if(u.indexOf('script.google.com')<0)return alert('Does not look like a Google Apps Script URL.'); setUrl(u); updateWoStatus(u); alert('URL saved!'); }
+function woTestConnection(){ var u=getUrl(); if(!u)return alert('No URL saved.'); apiCall({action:'test'}).then(function(r){if(r.success){document.getElementById('woStatusDot').className='status-dot connected';alert('Connected!');}else throw new Error(r.error);}).catch(function(e){document.getElementById('woStatusDot').className='status-dot error';alert('Failed: '+e.message);}); }
+
+// Loading
+function showLoading(){ var d=document.createElement('div'); d.className='loading-overlay'; d.id='loadingOverlay'; d.innerHTML='<div class="loading-spinner"></div>'; document.body.appendChild(d); }
+function hideLoading(){ var d=document.getElementById('loadingOverlay'); if(d)d.remove(); }
+
+// Modal helpers
+function openModal(id){document.getElementById(id).style.display='flex';}
+function closeModal(id,e){if(!e||e.target.id===id)document.getElementById(id).style.display='none';}
+
+// Demo data
+function getDemoPeople(){ return [{name:'Jeff Budish',role:'user',email:''},{name:'Ted Bickel',role:'user',email:''},{name:'Mack Braun',role:'user',email:''},{name:'Dylan Steman',role:'user',email:''},{name:'Tom Reid',role:'vendor',primaryProf:'Electrician',grade:'A+',rate:'90'},{name:'John Smith',role:'vendor',primaryProf:'Plumber',grade:'A',rate:'75'},{name:'Maria Lopez',role:'vendor',primaryProf:'Landscaping',grade:'A-',rate:'55'},{name:'Derek Chu',role:'vendor',primaryProf:'Snow Removal',grade:'B+',rate:'65'},{name:'Sara Okonkwo',role:'vendor',primaryProf:'Maintenance/Handyman/Turns',grade:'B',rate:'45'},{name:'Joel Friese',role:'admin',email:''},{name:'Derek Day',role:'admin',email:''}]; }
+function getDemoVendors(){ return getDemoPeople().filter(function(p){return p.role==='vendor';}); }
+function getDemoProperties(){ return ['123 Maple St','456 Oak Ave','789 Birch Rd','321 Elm Dr','555 Pine Blvd']; }
+function getDemoJobs(){ var now=new Date(); function fmt(n){var d=new Date(now);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);} function iso(n){var d=new Date(now);d.setDate(d.getDate()+n);return d.toISOString();} return [{id:'1',property:'123 Maple St',category:'Lawn Mowing',note:'Backyard overgrown',assignTo:'Maria Lopez',status:'Medium',due:fmt(5),date:fmt(-2),submittedAt:iso(-2),estHours:'3 hrs',location:'123 Maple St, Minneapolis MN',userPhotoUrl:'',vendorPhotoUrl:'',submittedBy:'Jeff Budish'},{id:'2',property:'456 Oak Ave',category:'Snow Removal',note:'Driveway + walkway',assignTo:'Derek Chu',status:'Done',due:fmt(-5),date:fmt(-10),submittedAt:iso(-10),completedAt:iso(-5),location:'456 Oak Ave, Minneapolis MN',userPhotoUrl:'',vendorPhotoUrl:'',submittedBy:'Ted Bickel'},{id:'3',property:'789 Birch Rd',category:'Electrical',note:'Panel inspection',assignTo:'Tom Reid',status:'High',due:fmt(2),date:fmt(-1),submittedAt:iso(-1),estHours:'4 hrs',location:'789 Birch Rd, Minneapolis MN',userPhotoUrl:'',vendorPhotoUrl:'',submittedBy:'Mack Braun'},{id:'4',property:'321 Elm Dr',category:'Plumbing',note:'Leaking pipe',assignTo:'John Smith',status:'Immediate',due:fmt(0),date:fmt(-1),submittedAt:iso(-1),location:'321 Elm Dr, Minneapolis MN',userPhotoUrl:'',vendorPhotoUrl:'',submittedBy:'Dylan Steman'},{id:'5',property:'555 Pine Blvd',category:'Yard Cleanup',note:'Fall leaves',assignTo:'',status:'Need',due:fmt(14),date:fmt(0),submittedAt:iso(0),location:'555 Pine Blvd, Minneapolis MN',userPhotoUrl:'',vendorPhotoUrl:'',submittedBy:'Jeff Budish'},{id:'6',property:'123 Maple St',category:'Repairs',note:'Fence damage',assignTo:'Sara Okonkwo',status:'Low',due:fmt(25),date:fmt(-3),submittedAt:iso(-3),location:'123 Maple St, Minneapolis MN',userPhotoUrl:'',vendorPhotoUrl:'',submittedBy:'Ted Bickel'}]; }
+function fileToBase64(f){ return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=function(){rej(new Error('Read failed'));};r.readAsDataURL(f);}); }
+
+// ════════════════════════════════════════════════════════════
+// RESERVE APP
+// ════════════════════════════════════════════════════════════
+var ROOMS=[
+  {name:'Sauna',          hours:[6,7,8,9,10,11,12,13,14,15,16,17]},
+  {name:'Golf Simulator', hours:[7,8,9,10,11,12,13,14,15,16,17]},
+  {name:'Conference Room',hours:[8,9,10,11,12,13,14,15,16,17]},
+];
+var S={
+  room:0, weekOffset:0, selectedDate:todayStr(),
+  currentUser:'', currentEmail:'',
+  bookings:[], localPending:{}, selectedSlots:[],
+};
+
+function todayStr(){return new Date().toISOString().slice(0,10);}
+
+function resInit(){
   var name='',email='';
-  try{ name=localStorage.getItem('resUser')||''; email=localStorage.getItem('resEmail')||''; }catch(e){}
-  if(name){ S.currentUser=name; S.currentEmail=email; document.getElementById('headerUser').textContent=name; }
-  else { openNameModal(false); }
-  updateStatusDot();
-  renderWeek();
-  loadBookings();
+  try{name=localStorage.getItem('resUser')||'';email=localStorage.getItem('resEmail')||'';}catch(e){}
+  if(name){S.currentUser=name;S.currentEmail=email;}
+  else{openNameModal();}
+  renderWeek(); loadBookings();
 }
-
 function loadBookings(){
-  if(!getUrl()){ renderGrid(); renderMyBookings(); return; }
+  if(!getUrl()){renderGrid();renderMyBookings();return;}
   apiCall({action:'getReservations'}).then(function(r){
-    if(r && r.success) S.bookings = r.reservations||[];
-    renderGrid(); renderMyBookings();
-  }).catch(function(){ renderGrid(); renderMyBookings(); });
+    if(r&&r.success)S.bookings=r.reservations||[];
+    renderGrid();renderMyBookings();
+  }).catch(function(){renderGrid();renderMyBookings();});
 }
-
-// ── Name modal ───────────────────────────────────────────────
-function openNameModal(canClose){
-  document.getElementById('inputName').value = S.currentUser;
-  document.getElementById('inputEmail').value = S.currentEmail;
-  document.getElementById('nameModal').style.display = 'flex';
+function openNameModal(){
+  document.getElementById('inputName').value=S.currentUser;
+  document.getElementById('inputEmail').value=S.currentEmail;
+  document.getElementById('nameModal').style.display='flex';
 }
 function saveName(){
   var n=document.getElementById('inputName').value.trim();
   var e=document.getElementById('inputEmail').value.trim();
-  if(!n) return alert('Please enter your name.');
-  if(!e||!e.includes('@')) return alert('Please enter a valid email.');
-  S.currentUser=n; S.currentEmail=e;
-  try{ localStorage.setItem('resUser',n); localStorage.setItem('resEmail',e); }catch(ex){}
-  document.getElementById('headerUser').textContent=n;
+  if(!n)return alert('Please enter your name.');
+  if(!e||!e.includes('@'))return alert('Please enter a valid email.');
+  S.currentUser=n;S.currentEmail=e;
+  try{localStorage.setItem('resUser',n);localStorage.setItem('resEmail',e);}catch(ex){}
+  // sync name to WO header if on reserve tab
+  var hu=document.getElementById('headerUser'); if(hu)hu.textContent=n;
   document.getElementById('nameModal').style.display='none';
-  renderGrid(); renderMyBookings();
+  renderGrid();renderMyBookings();
 }
-function changeUser(){ openNameModal(true); }
-
-// ── Room / date ───────────────────────────────────────────────
-function selectRoom(i){
-  S.room=i; S.selectedSlots=[];
-  document.querySelectorAll('.room-tab').forEach(function(t,j){ t.classList.toggle('active',i===j); });
-  renderGrid();
-}
-function shiftWeek(d){ S.weekOffset+=d; renderWeek(); renderGrid(); }
-function selectDay(ds){ S.selectedDate=ds; S.selectedSlots=[]; renderWeek(); renderGrid(); }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
-
+function changeUser(){openNameModal();}
+function selectRoom(i){S.room=i;S.selectedSlots=[];document.querySelectorAll('.room-tab').forEach(function(t,j){t.classList.toggle('active',i===j);});renderGrid();}
+function shiftWeek(d){S.weekOffset+=d;renderWeek();renderGrid();}
+function selectDay(ds){S.selectedDate=ds;S.selectedSlots=[];renderWeek();renderGrid();}
 function renderWeek(){
-  var strip=document.getElementById('weekStrip'), label=document.getElementById('weekLabel');
-  var today=new Date(); today.setHours(0,0,0,0);
-  var mon=new Date(today); var dow=today.getDay(); var diff=dow===0?-6:1-dow;
+  var strip=document.getElementById('weekStrip'),label=document.getElementById('weekLabel');
+  var today=new Date();today.setHours(0,0,0,0);
+  var mon=new Date(today);var dow=today.getDay();var diff=dow===0?-6:1-dow;
   mon.setDate(mon.getDate()+diff+S.weekOffset*7);
   var days=['Su','Mo','Tu','We','Th','Fr','Sa'],html='',first=null,last=null;
   for(var i=0;i<7;i++){
-    var d=new Date(mon); d.setDate(mon.getDate()+i);
+    var d=new Date(mon);d.setDate(mon.getDate()+i);
     var ds=d.toISOString().slice(0,10);
-    if(i===0)first=d; if(i===6)last=d;
+    if(i===0)first=d;if(i===6)last=d;
     var isToday=ds===todayStr(),isSel=ds===S.selectedDate;
     html+='<div class="day-chip'+(isToday?' today':'')+(isSel?' active':'')+'" onclick="selectDay(\''+ds+'\')">'
       +'<span class="dow">'+days[d.getDay()]+'</span><span class="dom">'+d.getDate()+'</span></div>';
   }
   strip.innerHTML=html;
   var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var lbl=mo[first.getMonth()]; if(first.getMonth()!==last.getMonth()) lbl+='-'+mo[last.getMonth()];
+  var lbl=mo[first.getMonth()];if(first.getMonth()!==last.getMonth())lbl+='-'+mo[last.getMonth()];
   label.textContent=lbl+' '+last.getFullYear();
 }
-
-// ── Grid ──────────────────────────────────────────────────────
 function renderGrid(){
   var room=ROOMS[S.room];
-  document.getElementById('gridLabel').textContent=room.name+' — '+fmtDateLabel(S.selectedDate);
+  document.getElementById('gridLabel').textContent=room.name+' \u2014 '+fmtDateLabel(S.selectedDate);
   var occupied={};
-  S.bookings.filter(function(b){ return b.room===S.room && b.date===S.selectedDate && b.status!=='Cancelled'; })
-    .forEach(function(b){ for(var m=b.startMin; m<b.endMin; m+=15) occupied[m]=b.user; });
+  S.bookings.filter(function(b){return b.room===S.room&&b.date===S.selectedDate&&b.status!=='Cancelled';})
+    .forEach(function(b){for(var m=b.startMin;m<b.endMin;m+=15)occupied[m]=b.user;});
   var html='';
   room.hours.forEach(function(h){
     var slotHtml='';
@@ -305,11 +1003,11 @@ function renderGrid(){
       var isOther=owner&&!isMine;
       var isSelected=S.selectedSlots.indexOf(totalMin)>=0;
       var cls,onclick='';
-      if(isPending){ cls='slot pending'; }
-      else if(isOther){ cls='slot booked'; }
-      else if(isMine){ cls='slot mine'; onclick=' onclick="unbook('+totalMin+')"'; }
-      else if(isSelected){ cls='slot selected'; onclick=' onclick="toggleSlot('+totalMin+')"'; }
-      else { cls='slot'; onclick=' onclick="toggleSlot('+totalMin+')"'; }
+      if(isPending){cls='slot pending';}
+      else if(isOther){cls='slot booked';}
+      else if(isMine){cls='slot mine';onclick=' onclick="unbook('+totalMin+')"';}
+      else if(isSelected){cls='slot selected';onclick=' onclick="toggleSlot('+totalMin+')"';}
+      else{cls='slot';onclick=' onclick="toggleSlot('+totalMin+')"';}
       slotHtml+='<div class="'+cls+'"'+onclick+'>'+fmtMin(totalMin)+'</div>';
     });
     html+='<div class="hour-block"><div class="hour-label">'+fmtHour(h)+'</div><div class="slots-row">'+slotHtml+'</div></div>';
@@ -317,192 +1015,104 @@ function renderGrid(){
   document.getElementById('timeGrid').innerHTML=html;
   updateBookBtn();
 }
-
 function toggleSlot(startMin){
-  if(!S.currentUser){ openNameModal(false); return; }
+  if(!S.currentUser){openNameModal();return;}
   var idx=S.selectedSlots.indexOf(startMin);
-  if(idx>=0){ S.selectedSlots.splice(idx,1); }
-  else { S.selectedSlots.push(startMin); S.selectedSlots.sort(function(a,b){return a-b;}); }
+  if(idx>=0){S.selectedSlots.splice(idx,1);}
+  else{S.selectedSlots.push(startMin);S.selectedSlots.sort(function(a,b){return a-b;});}
   renderGrid();
 }
-
 function updateBookBtn(){
-  var btn=document.getElementById('bookBtn');
-  var lbl=document.getElementById('bookBtnLabel');
-  if(!btn) return;
+  var btn=document.getElementById('bookBtn'),lbl=document.getElementById('bookBtnLabel');
+  if(!btn)return;
   var n=S.selectedSlots.length;
-  if(n===0){
-    btn.disabled=true; btn.style.opacity='0.4';
-    lbl.textContent='Select time slots above';
-  } else {
-    btn.disabled=false; btn.style.opacity='1';
+  if(n===0){btn.disabled=true;btn.style.opacity='0.4';lbl.textContent='Select time slots above';}
+  else{
+    btn.disabled=false;btn.style.opacity='1';
     var mins=n*15;
     var durStr=mins<60?(mins+' min'):(mins%60===0?(mins/60)+' hr':Math.floor(mins/60)+'h '+(mins%60)+'m');
-    var first=S.selectedSlots[0], last=S.selectedSlots[S.selectedSlots.length-1]+15;
-    lbl.textContent='Book '+durStr+' — '+fmtMin(first)+'–'+fmtMin(last);
+    var first=S.selectedSlots[0],last=S.selectedSlots[S.selectedSlots.length-1]+15;
+    lbl.textContent='Book '+durStr+' \u2014 '+fmtMin(first)+'\u2013'+fmtMin(last);
   }
 }
-// ── Book / Unbook ─────────────────────────────────────────────
 function submitBooking(){
-  if(!S.currentUser){ openNameModal(false); return; }
-  if(!S.selectedSlots.length) return;
-  if(!getUrl()){ showToast('failed','No URL set \u2014 go to Settings'); return; }
-  var startMin=S.selectedSlots[0];
-  var endMin=S.selectedSlots[S.selectedSlots.length-1]+15;
-  S.selectedSlots.forEach(function(m){
-    S.localPending[S.room+'|'+S.selectedDate+'|'+m]=true;
-  });
-  var slots=S.selectedSlots.slice();
-  S.selectedSlots=[];
-  renderGrid();
-  apiCall({
-    action:'addReservation',
-    reservation:{
-      room: S.room, roomName: ROOMS[S.room].name,
-      date: S.selectedDate,
-      startMin: startMin, endMin: endMin,
-      startTime: fmtMin(startMin), endTime: fmtMin(endMin),
-      user: S.currentUser, email: S.currentEmail,
-      submittedAt: new Date().toISOString()
-    }
-  }).then(function(r){
-    slots.forEach(function(m){ delete S.localPending[S.room+'|'+S.selectedDate+'|'+m]; });
-    if(r && r.success){
-      S.bookings.push(r.reservation);
-      showToast('sent','\u2713 Booked \u2014 invite sent to '+S.currentEmail);
-    } else {
-      showToast('failed','Failed: '+(r&&r.error?r.error:'unknown error'));
-    }
-    renderGrid(); renderMyBookings();
-  }).catch(function(e){
-    slots.forEach(function(m){ delete S.localPending[S.room+'|'+S.selectedDate+'|'+m]; });
-    showToast('failed','Error: '+e.message);
-    renderGrid();
-  });
+  if(!S.currentUser){openNameModal();return;}
+  if(!S.selectedSlots.length)return;
+  if(!getUrl()){resShowToast('failed','No URL set \u2014 go to Settings');return;}
+  var startMin=S.selectedSlots[0],endMin=S.selectedSlots[S.selectedSlots.length-1]+15;
+  S.selectedSlots.forEach(function(m){S.localPending[S.room+'|'+S.selectedDate+'|'+m]=true;});
+  var slots=S.selectedSlots.slice();S.selectedSlots=[];renderGrid();
+  apiCall({action:'addReservation',reservation:{room:S.room,roomName:ROOMS[S.room].name,date:S.selectedDate,startMin:startMin,endMin:endMin,startTime:fmtMin(startMin),endTime:fmtMin(endMin),user:S.currentUser,email:S.currentEmail,submittedAt:new Date().toISOString()}})
+  .then(function(r){
+    slots.forEach(function(m){delete S.localPending[S.room+'|'+S.selectedDate+'|'+m];});
+    if(r&&r.success){S.bookings.push(r.reservation);resShowToast('sent','\u2713 Booked \u2014 invite sent to '+S.currentEmail);}
+    else{resShowToast('failed','Failed: '+(r&&r.error?r.error:'unknown error'));}
+    renderGrid();renderMyBookings();
+  }).catch(function(e){slots.forEach(function(m){delete S.localPending[S.room+'|'+S.selectedDate+'|'+m];});resShowToast('failed','Error: '+e.message);renderGrid();});
 }
-
 function unbook(startMin){
-  if(!getUrl()){ showToast('failed','No URL set \u2014 go to Settings'); return; }
-  // find the booking that owns this slot
-  var b=S.bookings.find(function(x){
-    return x.room===S.room && x.date===S.selectedDate && x.startMin<=startMin && x.endMin>startMin && x.user===S.currentUser && x.status!=='Cancelled';
-  });
-  if(!b) return;
-  var slotKey=S.room+'|'+S.selectedDate+'|'+startMin;
-  S.localPending[slotKey]=true;
-  renderGrid();
-  apiCall({action:'cancelReservation', id:b.id}).then(function(r){
+  if(!getUrl()){resShowToast('failed','No URL set \u2014 go to Settings');return;}
+  var b=S.bookings.find(function(x){return x.room===S.room&&x.date===S.selectedDate&&x.startMin<=startMin&&x.endMin>startMin&&x.user===S.currentUser&&x.status!=='Cancelled';});
+  if(!b)return;
+  var slotKey=S.room+'|'+S.selectedDate+'|'+startMin;S.localPending[slotKey]=true;renderGrid();
+  apiCall({action:'cancelReservation',id:b.id}).then(function(r){
     delete S.localPending[slotKey];
-    if(r&&r.success){
-      var idx=S.bookings.findIndex(function(x){ return x.id===b.id; });
-      if(idx>=0) S.bookings[idx].status='Cancelled';
-      showToast('sent','\u2713 Cancelled');
-    } else {
-      showToast('failed','Cancel failed');
-    }
-    renderGrid(); renderMyBookings();
-  }).catch(function(e){
-    delete S.localPending[slotKey];
-    showToast('failed','Error: '+e.message);
-    renderGrid();
-  });
+    if(r&&r.success){var idx=S.bookings.findIndex(function(x){return x.id===b.id;});if(idx>=0)S.bookings[idx].status='Cancelled';resShowToast('sent','\u2713 Cancelled');}
+    else{resShowToast('failed','Cancel failed');}
+    renderGrid();renderMyBookings();
+  }).catch(function(e){delete S.localPending[slotKey];resShowToast('failed','Error: '+e.message);renderGrid();});
 }
-
 function cancelGroup(id){
-  if(!getUrl()){ showToast('failed','No URL set \u2014 go to Settings'); return; }
-  apiCall({action:'cancelReservation', id:id}).then(function(r){
-    if(r&&r.success){
-      var idx=S.bookings.findIndex(function(x){ return x.id===id; });
-      if(idx>=0) S.bookings[idx].status='Cancelled';
-      showToast('sent','\u2713 Cancelled');
-    } else { showToast('failed','Cancel failed'); }
-    renderGrid(); renderMyBookings();
-  }).catch(function(e){ showToast('failed','Error: '+e.message); });
+  if(!getUrl()){resShowToast('failed','No URL set \u2014 go to Settings');return;}
+  apiCall({action:'cancelReservation',id:id}).then(function(r){
+    if(r&&r.success){var idx=S.bookings.findIndex(function(x){return x.id===id;});if(idx>=0)S.bookings[idx].status='Cancelled';resShowToast('sent','\u2713 Cancelled');}
+    else{resShowToast('failed','Cancel failed');}
+    renderGrid();renderMyBookings();
+  }).catch(function(e){resShowToast('failed','Error: '+e.message);});
 }
-
-// ── My Bookings ───────────────────────────────────────────────
 function renderMyBookings(){
   var container=document.getElementById('myBookings');
-  var mine=S.bookings.filter(function(b){ return b.user===S.currentUser && b.status!=='Cancelled'; })
-    .sort(function(a,b){ return a.date===b.date?a.startMin-b.startMin:a.date.localeCompare(b.date); });
-  if(!mine.length){
-    container.innerHTML='<div class="empty-state"><div style="font-size:28px">&#128197;</div><div style="font-size:13px">No bookings yet</div></div>';
-    return;
-  }
-  // Group consecutive slots
-  var groups=[], cur=null;
+  var mine=S.bookings.filter(function(b){return b.user===S.currentUser&&b.status!=='Cancelled';}).sort(function(a,b){return a.date===b.date?a.startMin-b.startMin:a.date.localeCompare(b.date);});
+  if(!mine.length){container.innerHTML='<div class="empty-state" style="padding:14px 0"><div style="font-size:24px">&#128197;</div><div style="font-size:12px">No bookings yet</div></div>';return;}
+  var roomIcons=['<svg width="18" height="18" viewBox="0 0 100 100" fill="none"><path d="M38 38 C36 32 40 28 38 22 C36 16 40 12 38 6" stroke="#6b7fa3" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M52 36 C50 30 54 26 52 20 C50 14 54 10 52 4" stroke="#6b7fa3" stroke-width="5" stroke-linecap="round" fill="none"/><rect x="18" y="52" width="64" height="36" rx="4" fill="#6b7fa3" opacity="0.4"/><rect x="18" y="64" width="64" height="9" fill="#6b7fa3" opacity="0.7"/><rect x="16" y="48" width="68" height="8" rx="3" fill="#6b7fa3" opacity="0.8"/></svg>','<svg width="18" height="18" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#6b7fa3" opacity="0.15"/><circle cx="50" cy="50" r="46" stroke="#6b7fa3" stroke-width="3" fill="none"/><circle cx="50" cy="42" r="4" fill="#6b7fa3"/></svg>','<svg width="18" height="18" viewBox="0 0 100 100" fill="none"><ellipse cx="50" cy="68" rx="38" ry="12" fill="none" stroke="#6b7fa3" stroke-width="5"/><circle cx="20" cy="38" r="8" fill="none" stroke="#6b7fa3" stroke-width="4.5"/><circle cx="50" cy="34" r="8" fill="none" stroke="#6b7fa3" stroke-width="4.5"/><circle cx="80" cy="38" r="8" fill="none" stroke="#6b7fa3" stroke-width="4.5"/></svg>'];
+  var groups=[],cur=null;
   mine.forEach(function(b){
-    if(!cur||cur.room!==b.room||cur.date!==b.date||cur.endMin!==b.startMin){
-      cur={id:b.id,room:b.room,date:b.date,startMin:b.startMin,endMin:b.endMin};
-      groups.push(cur);
-    } else { cur.endMin=b.endMin; }
+    if(!cur||cur.room!==b.room||cur.date!==b.date||cur.endMin!==b.startMin){cur={id:b.id,room:b.room,date:b.date,startMin:b.startMin,endMin:b.endMin};groups.push(cur);}
+    else{cur.endMin=b.endMin;}
   });
-  var roomIcons=['<svg width="18" height="18" viewBox="0 0 100 100" fill="none"><path d="M38 38 C36 32 40 28 38 22 C36 16 40 12 38 6" stroke="#6b7fa3" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M52 36 C50 30 54 26 52 20 C50 14 54 10 52 4" stroke="#6b7fa3" stroke-width="5" stroke-linecap="round" fill="none"/><rect x="18" y="52" width="64" height="36" rx="4" fill="#6b7fa3" opacity="0.4"/><rect x="18" y="64" width="64" height="9" fill="#6b7fa3" opacity="0.7"/><rect x="16" y="48" width="68" height="8" rx="3" fill="#6b7fa3" opacity="0.8"/></svg>','<svg width="18" height="18" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="46" fill="#6b7fa3" opacity="0.15"/><circle cx="50" cy="50" r="46" stroke="#6b7fa3" stroke-width="3" fill="none"/><circle cx="50" cy="42" r="4" fill="#6b7fa3"/><circle cx="38" cy="28" r="4" fill="#6b7fa3" opacity="0.7"/><circle cx="62" cy="28" r="4" fill="#6b7fa3" opacity="0.7"/></svg>','<svg width="18" height="18" viewBox="0 0 100 100" fill="none"><ellipse cx="50" cy="68" rx="38" ry="12" fill="none" stroke="#6b7fa3" stroke-width="5"/><circle cx="20" cy="38" r="8" fill="none" stroke="#6b7fa3" stroke-width="4.5"/><circle cx="50" cy="34" r="8" fill="none" stroke="#6b7fa3" stroke-width="4.5"/><circle cx="80" cy="38" r="8" fill="none" stroke="#6b7fa3" stroke-width="4.5"/></svg>'];
   container.innerHTML=groups.map(function(g){
-    return '<div class="booking-card">'
-      +'<div class="booking-icon">'+roomIcons[g.room]+'</div>'
-      +'<div class="booking-info">'
-        +'<div class="booking-title">'+esc(ROOMS[g.room].name)+'</div>'
-        +'<div class="booking-sub">'+fmtDateLabel(g.date)+' &middot; '+fmtMin(g.startMin)+'&ndash;'+fmtMin(g.endMin)+'</div>'
-      +'</div>'
-      +'<button class="booking-cancel" onclick="cancelGroup(\''+g.id+'\')">Cancel</button>'
-      +'</div>';
+    return '<div class="booking-card"><div class="booking-icon">'+roomIcons[g.room]+'</div>'
+      +'<div class="booking-info"><div class="booking-title">'+esc(ROOMS[g.room].name)+'</div>'
+      +'<div class="booking-sub">'+fmtDateLabel(g.date)+' &middot; '+fmtMin(g.startMin)+'&ndash;'+fmtMin(g.endMin)+'</div></div>'
+      +'<button class="booking-cancel" onclick="cancelGroup(\''+g.id+'\')">Cancel</button></div>';
   }).join('');
 }
-
-// ── Toast ─────────────────────────────────────────────────────
-var _toastTimer=null;
-function showToast(type,msg){
+var _resToastTimer=null;
+function resShowToast(type,msg){
   var wrap=document.getElementById('bookingToastWrap');
   wrap.innerHTML='<div class="toast '+type+'">'+(type==='sending'?'<div class="spinner"></div>':'')+msg+'</div>';
-  if(_toastTimer) clearTimeout(_toastTimer);
-  if(type!=='sending') _toastTimer=setTimeout(function(){ wrap.innerHTML=''; },3500);
+  if(_resToastTimer)clearTimeout(_resToastTimer);
+  if(type!=='sending')_resToastTimer=setTimeout(function(){wrap.innerHTML='';},3500);
 }
 
-// ── Settings ──────────────────────────────────────────────────
-function showSettings(){
-  document.getElementById('screenMain').classList.remove('active');
-  document.getElementById('screenSettings').classList.add('active');
-  document.getElementById('bookBar').style.display='none';
-  document.getElementById('myBookingsBar').style.display='none';
-  var u=getUrl(); if(u) document.getElementById('settingsUrl').value=u;
-  updateStatusDot();
-}
-function hideSettings(){
-  document.getElementById('screenSettings').classList.remove('active');
-  document.getElementById('screenMain').classList.add('active');
-  document.getElementById('bookBar').style.display='flex';
-  document.getElementById('myBookingsBar').style.display='flex';
-}
-function saveUrl(){
-  var u=document.getElementById('settingsUrl').value.trim();
-  if(!u) return alert('Paste a URL first.');
-  if(!u.includes('script.google.com')) return alert('Doesn\'t look like a Google Apps Script URL.');
-  setUrl(u); updateStatusDot(); alert('URL saved!');
-  loadBookings();
-}
-function testConn(){
-  var u=getUrl(); if(!u) return alert('No URL saved.');
-  apiCall({action:'test'}).then(function(r){
-    if(r&&r.success){ document.getElementById('statusDot').className='status-dot connected'; alert('Connected!'); }
-    else throw new Error(r&&r.error?r.error:'failed');
-  }).catch(function(e){ document.getElementById('statusDot').className='status-dot error'; alert('Failed: '+e.message); });
-}
-function updateStatusDot(){
-  var u=getUrl();
-  var dot=document.getElementById('statusDot'), txt=document.getElementById('statusText');
-  if(!dot) return;
-  dot.className=u?'status-dot connected':'status-dot';
-  txt.textContent=u?'URL saved \u2014 ready':'No URL saved';
-}
+// Formatters (shared)
+function fmtHour(h){var ampm=h>=12?'pm':'am';var h12=h%12||12;return h12+ampm;}
+function fmtMin(m){var h=Math.floor(m/60),mn=m%60,ampm=h>=12?'pm':'am',h12=h%12||12;return h12+':'+(mn<10?'0':'')+mn+ampm;}
+function fmtDateLabel(ds){if(!ds)return '';var d=new Date(ds+'T12:00:00');var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mos=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return days[d.getDay()]+', '+mos[d.getMonth()]+' '+d.getDate();}
 
-// ── Formatters ────────────────────────────────────────────────
-function fmtHour(h){ var ampm=h>=12?'pm':'am'; var h12=h%12||12; return h12+ampm; }
-function fmtMin(m){ var h=Math.floor(m/60),mn=m%60,ampm=h>=12?'pm':'am',h12=h%12||12; return h12+':'+(mn<10?'0':'')+mn+ampm; }
-function fmtDateLabel(ds){ if(!ds) return ''; var d=new Date(ds+'T12:00:00'); var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mos=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return days[d.getDay()]+', '+mos[d.getMonth()]+' '+d.getDate(); }
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-init();
+// ════════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════════
+// Load demo data immediately so WO welcome dropdown works
+WO.people=getDemoPeople();WO.vendors=getDemoVendors();WO.properties=getDemoProperties();WO.jobs=getDemoJobs();WO.jobTypes=[];
+populateWelcomeDropdown();
+updateWoStatus(getUrl());
+// Boot reserve app
+resInit();
+// Try to fetch live WO data in background
+apiCall({action:'getData'}).then(function(r){
+  if(r&&r.success){WO.jobs=r.jobs||WO.jobs;WO.vendors=r.vendors||WO.vendors;WO.properties=r.properties||WO.properties;WO.people=r.people||WO.people;WO.jobTypes=r.jobTypes||WO.jobTypes;populateWelcomeDropdown();}
+}).catch(function(){});
 </script>
 </body>
 </html>
