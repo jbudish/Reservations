@@ -406,6 +406,10 @@ input[type=file]{display:none}
 <input type="file" id="vendorPhotoUpload" accept="image/*" onchange="handleVendorPhotoUpload(this)" style="position:fixed;top:-100px;left:-100px;opacity:0;width:1px;height:1px">
 
 <script>
+// ── Web App URL ─────────────────────────────────────────────────────────────
+var HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwzYOOEnRKrVp6sLgABLi0eoUpuTEGSVoRGoloZKJHNk6d0GisXQlDrh-sIe38Mm32PLQ/exec';
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ═══════════════════════════════════════════
 // SHARED LOGIN
 // ═══════════════════════════════════════════
@@ -513,13 +517,10 @@ function switchApp(which) {
 // ═══════════════════════════════════════════
 // SHARED API
 // ═══════════════════════════════════════════
-// ── To hardcode your URL, paste it between the quotes below ──────────────────
-var HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwzYOOEnRKrVp6sLgABLi0eoUpuTEGSVoRGoloZKJHNk6d0GisXQlDrh-sIe38Mm32PLQ/exec';
-// ─────────────────────────────────────────────────────────────────────────────
-function getUrl(){ if(HARDCODED_URL) return HARDCODED_URL; try{ return localStorage.getItem('woUrl')||''; }catch(e){ return ''; } }
+function getUrl(){ return HARDCODED_URL || (function(){ try{ return localStorage.getItem('woUrl')||''; }catch(e){ return ''; } })(); }
 function setUrl(u){ try{ localStorage.setItem('woUrl',u); }catch(e){} }
 function apiCall(payload){
-  var u = getUrl(); if (!u) return Promise.reject(new Error('No URL configured. Please contact your admin.'));
+  var u = getUrl(); if (!u) return Promise.reject(new Error('No URL configured.'));
   return fetch(u,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}).then(function(r){ return r.json(); });
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -979,7 +980,7 @@ function submitBooking(){
     if(r&&r.success){S.bookings.push(r.reservation);resShowToast('sent','✓ Booked!');}
     else{resShowToast('failed','Failed: '+(r&&r.error?r.error:'unknown error'));}
     renderGrid();renderMyBookings();
-  }).catch(function(e){slots.forEach(function(m){delete S.localPending[S.room+'|'+S.selectedDate+'|'+m];});resShowToast('failed','Error: '+e.message);renderGrid();});
+  }).catch(function(e){slots.forEach(function(m){delete S.localPending[S.room+'|'+S.selectedDate+'|'+m];});resShowToast('failed','Error: '+(e.message||'Network error. Check your connection.'));renderGrid();});
 }
 function unbookSlot(startMin){
   if(!getUrl()){resShowToast('failed','Not connected — contact your admin');return;}
