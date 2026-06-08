@@ -514,12 +514,12 @@ function switchApp(which) {
 // SHARED API
 // ═══════════════════════════════════════════
 // ── To hardcode your URL, paste it between the quotes below ──────────────────
-var HARDCODED_URL = '';  // e.g. 'https://script.google.com/macros/s/YOUR_ID/exec'
+var HARDCODED_URL = '';  // e.g. 'https://script.google.com/macros/s/AKfycbwzYOOEnRKrVp6sLgABLi0eoUpuTEGSVoRGoloZKJHNk6d0GisXQlDrh-sIe38Mm32PLQ/exec'
 // ─────────────────────────────────────────────────────────────────────────────
 function getUrl(){ if(HARDCODED_URL) return HARDCODED_URL; try{ return localStorage.getItem('woUrl')||''; }catch(e){ return ''; } }
 function setUrl(u){ try{ localStorage.setItem('woUrl',u); }catch(e){} }
 function apiCall(payload){
-  var u = getUrl(); if (!u) return Promise.reject(new Error('No URL configured — go to Settings'));
+  var u = getUrl(); if (!u) return Promise.reject(new Error('No URL configured. Please contact your admin.'));
   return fetch(u,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}).then(function(r){ return r.json(); });
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -828,7 +828,7 @@ function assignJob(id,vendorName){var job=WO.jobs.find(function(j){return j.id==
 function submitJob(){
   var prop=document.getElementById('dProperty').value,loc=document.getElementById('dLocation').value.trim(),cat=document.getElementById('dCategory').value,note=document.getElementById('dNote').value.trim(),due=document.getElementById('dDue').value,pri=document.getElementById('dPriority').value,assign=document.getElementById('dAssign').value,estH=document.getElementById('dEstHours').value;
   if(!prop)return alert('Property is required.');if(!loc)return alert('Location is required.');if(!cat)return alert('Job Type is required.');
-  var url=getUrl();if(!url){showWoToast('failed','No Sheets URL — go to Settings');return;}
+  var url=getUrl();if(!url){showWoToast('failed','Not connected — contact your admin');return;}
   showWoToast('sending','Saving…');
   var doUpload=WO.photoFileD?fileToBase64(WO.photoFileD).then(function(b64){return apiCall({action:'uploadPhoto',unit:prop,category:cat,filename:prop+'_'+cat+'_'+Date.now()+'.jpg',mimeType:WO.photoFileD.type||'image/jpeg',base64:b64});}).then(function(r){return r.success?r.viewUrl:'';}).catch(function(){return '';}):Promise.resolve('');
   doUpload.then(function(photoUrl){return apiCall({action:'submitJob',job:{property:prop,location:loc,category:cat,note:note,due:due,priority:pri,assignTo:assign,estHours:estH,userPhotoUrl:photoUrl,submittedBy:WO.userName,status:(pri||'Need'),date:new Date().toLocaleDateString(),submittedAt:new Date().toISOString()}});})
@@ -953,7 +953,23 @@ function updateBookBtn(){
 function submitBooking(){
   if(!S.currentUser){openNameModal();return;}
   if(!S.selectedSlots.length)return;
-  if(!getUrl()){resShowToast('failed','No URL set — go to Settings');return;}
+
+  // ── BOOKING RESTRICTIONS ────────────────────────────────
+  // Max 4 consecutive 15-min slots (1 hour). Must be consecutive.
+  var sorted = S.selectedSlots.slice().sort(function(a,b){return a-b;});
+  if(sorted.length > 4){
+    resShowToast('failed','Max booking is 1 hour (4 slots). Please adjust your selection.');
+    return;
+  }
+  for(var i=1;i<sorted.length;i++){
+    if(sorted[i]-sorted[i-1]!==15){
+      resShowToast('failed','Slots must be consecutive. Please select back-to-back times.');
+      return;
+    }
+  }
+  // ── END BOOKING RESTRICTIONS ────────────────────────────
+
+  if(!getUrl()){resShowToast('failed','Not connected — contact your admin');return;}
   var startMin=S.selectedSlots[0],endMin=S.selectedSlots[S.selectedSlots.length-1]+15;
   S.selectedSlots.forEach(function(m){S.localPending[S.room+'|'+S.selectedDate+'|'+m]=true;});
   var slots=S.selectedSlots.slice();S.selectedSlots=[];renderGrid();
@@ -966,7 +982,7 @@ function submitBooking(){
   }).catch(function(e){slots.forEach(function(m){delete S.localPending[S.room+'|'+S.selectedDate+'|'+m];});resShowToast('failed','Error: '+e.message);renderGrid();});
 }
 function unbookSlot(startMin){
-  if(!getUrl()){resShowToast('failed','No URL set — go to Settings');return;}
+  if(!getUrl()){resShowToast('failed','Not connected — contact your admin');return;}
   var b=S.bookings.find(function(x){return x.room===S.room&&x.date===S.selectedDate&&x.startMin<=startMin&&x.endMin>startMin&&x.user===S.currentUser&&x.status!=='Cancelled';});
   if(!b)return;
   var slotKey=S.room+'|'+S.selectedDate+'|'+startMin;S.localPending[slotKey]=true;renderGrid();
@@ -978,7 +994,7 @@ function unbookSlot(startMin){
   }).catch(function(e){delete S.localPending[slotKey];resShowToast('failed','Error: '+e.message);renderGrid();});
 }
 function cancelGroup(id){
-  if(!getUrl()){resShowToast('failed','No URL set — go to Settings');return;}
+  if(!getUrl()){resShowToast('failed','Not connected — contact your admin');return;}
   apiCall({action:'cancelReservation',id:id}).then(function(r){
     if(r&&r.success){var idx=S.bookings.findIndex(function(x){return x.id===id;});if(idx>=0)S.bookings[idx].status='Cancelled';resShowToast('sent','✓ Cancelled');}
     else{resShowToast('failed','Cancel failed');}
