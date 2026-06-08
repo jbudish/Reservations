@@ -514,7 +514,7 @@ function switchApp(which) {
 // SHARED API
 // ═══════════════════════════════════════════
 // ── To hardcode your URL, paste it between the quotes below ──────────────────
-var HARDCODED_URL = '';  // e.g. 'https://script.google.com/macros/s/AKfycbwzYOOEnRKrVp6sLgABLi0eoUpuTEGSVoRGoloZKJHNk6d0GisXQlDrh-sIe38Mm32PLQ/exec'
+var HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwzYOOEnRKrVp6sLgABLi0eoUpuTEGSVoRGoloZKJHNk6d0GisXQlDrh-sIe38Mm32PLQ/exec';
 // ─────────────────────────────────────────────────────────────────────────────
 function getUrl(){ if(HARDCODED_URL) return HARDCODED_URL; try{ return localStorage.getItem('woUrl')||''; }catch(e){ return ''; } }
 function setUrl(u){ try{ localStorage.setItem('woUrl',u); }catch(e){} }
